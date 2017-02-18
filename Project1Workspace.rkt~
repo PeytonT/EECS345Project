@@ -1,0 +1,5 @@
+(define ismath?
+  (lambda (expr)
+    (cond
+      ((or (or (or (eq? (car expr) '+) (eq? (car expr) '-)) (or (eq? (car expr) '*) (eq? (car expr) '/))) (eq? (car expr) '%)) #t)
+      (else #f))))
