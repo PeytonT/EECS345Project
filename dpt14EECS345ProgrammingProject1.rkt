@@ -15,7 +15,7 @@
   (lambda (expr state)
     (cond
       ((atom? expr) (if (number? expr) expr (get-var-value expr state)))
-      ((eq? (cddr expr) ()) (if (eq? (car expr) '=) (* -1 (cadr expr)) (error "An expression is being evaluated with too few operands."))) ;handles the unary "-" operator
+      ((eq? (cddr expr) ()) (if (eq? (car expr) '-) (* -1 (cadr expr)) (error "An expression is being evaluated with too few operands."))) ;handles the unary "-" operator
       ((eq? (car expr) '=) (M_value (caddr expr) state))
       ((is_math_op? expr) ((get_math_op expr) (M_value (cadr expr) state) (M_value (caddr expr) state)))
       (else (error "You somehow called M_value on something without a value.")))))
