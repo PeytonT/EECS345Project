@@ -140,7 +140,7 @@
 ;Takes a variable and a state and returns the state where the variable has been declared. If it is being declared but not initialized, use value ()
 (define declare
   (lambda (var value state)
-    (encapsulate (cons var (car state)) (cons value (cadr state)))))
+    (newfirsts var value state)))
 
 ;Takes a variable, an expression, and a state and returns the state where the variable is assigned to the value
 ;of the expression if the variable is declared. Otherwise creates an error.
