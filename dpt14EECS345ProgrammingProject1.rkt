@@ -17,7 +17,7 @@
       ((eq? (car expr) 'var) (declare (cadr expr) (cddr expr) state))
       ((eq? (car expr) '=) (assign (cadr expr) (cddr expr) state)
       ((eq? (car expr) 'return) )
-      ((eq? (car expr) 'if) ) (if (cadr expr) (caddr expr) (caddr expr) state))
+      ((eq? (car expr) 'if) (if (cadr expr) (caddr expr) (caddr expr) state))
       ((eq? (car expr) 'while) (while (cadr expr) (caddr expr) state))))))
      
 
