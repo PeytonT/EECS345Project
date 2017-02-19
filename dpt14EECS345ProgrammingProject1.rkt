@@ -25,12 +25,12 @@
 (define M_value
   (lambda (expr state)
     (cond
-      ((is_boolean expr) expr)
       ((atom? expr) (if (number? expr) expr (get-var-value expr state)))
       ((eq? (cddr expr) ()) (if (eq? (car expr) '-) (* -1 (cadr expr)) (error "An expression is being evaluated with too few operands."))) ;handles the unary "-" operator
       ((eq? (car expr) '=) (M_value (caddr expr) state))
       ((is_math_op? expr) ((get_math_op expr) (M_value (cadr expr) state) (M_value (caddr expr) state)))
       ((is_bool_op? expr) (M_boolean expr state))
+      ((is_comp_op? expr) (M_boolean expr state))
       (else (error "You somehow called M_value on something without a value.")))))
 
 ;Takes an expression and a state and returns the boolean value of the expression evaluated in the given state. The expression may contain assignments
@@ -97,29 +97,83 @@
 (define get_bool_op
   (lambda (expr)
     (cond
-      ((eq? (car expr) '&&) and_error)
-      ((eq? (car expr) '||) or_error)
-      ((eq? (car expr) '!) not_error)
-      ((eq? (car expr) '==) eq_error)
-      ((eq? (car expr) '!=) not_eq_error)
-      ((eq? (car expr) '<) <_error)
-      ((eq? (car expr) '>) >_error)
-      ((eq? (car expr) '<=) <=_error)
-      ((eq? (car expr) '>=) >=_error))))
+      ((eq? (car expr) '&&) and_error) ;Done ADD NULL CONDITIONS?
+      ((eq? (car expr) '||) or_error) ;Done
+      ((eq? (car expr) '!) not_error) ;Done
+      ((eq? (car expr) '==) eq_error) ;Done
+      ((eq? (car expr) '!=) not_eq_error) ;Done
+      ((eq? (car expr) '<) <_error) ;Done
+      ((eq? (car expr) '>) >_error) 
+      ((eq? (car expr) '<=) <=_error) 
+      ((eq? (car expr) '>=) >=_error)))) 
+
+
+;Checks to see if inputted value is a primitive boolean.
+(define is_boolean?
+  (lambda (val)
+    (cond
+      ((null? val) #f)
+      ((or (eq? val #t) (eq? val #f)) #t)
+      (else #f))))
+
+;If the expression is a comparision operation, it returns the appropriate operation.
+
 
 ;Takes two supposedly boolean inputs and ands them if they are actually booleans. Otherwise throws an error
 (define and_error
   (lambda (bool1 bool2)
     (cond
-      ((and (or (eq? bool1 #t) (eq? bool1 #f)) (or (eq? bool2 #t) (eq? bool2 #f))) (and bool1 bool2))
+      ((and (is_boolean? bool1) (is_boolean? bool2)) (and bool1 bool2))
       (else (error "Attempted to treat a non-boolean as a boolean.")))))
 
 ;Takes two supposedly boolean inputs and ors them if they are actually booleans. Otherwise throws an error
 (define or_error
   (lambda (bool1 bool2)
     (cond
-      ((and (or (eq? bool1 #t) (eq? bool1 #f)) (or (eq? bool2 #t) (eq? bool2 #f))) (or bool1 bool2))
+      ((and (is_boolean? bool1) (is_boolean? bool2)) (or bool1 bool2))
       (else (error "Attempted to treat a non-boolean as a boolean.")))))
+
+;Takes two values and determines whether or not they are the same value. These values can be of type int or boolean.
+(define eq_error
+  (lambda (val1 val2)
+    (cond
+      ((or (and (is_boolean? val1) (is_boolean? val2)) (and (not (is_boolean? val1)) (not (is_boolean? val2)))) (eq? val1 val2))
+      (else (error "Values are of different types. Condition cannot be determined!")))))
+
+;Takes two values and determines whether or not they are not equal. These values can be of type int or boolean.
+(define not_eq_error
+  (lambda (val1 val2)
+    (cond
+      ((or (and (is_boolean? val1) (is_boolean? val2)) (and (not (is_boolean? val1)) (not (is_boolean? val2)))) (not (eq? val1 val2)))
+      (else (error "Values are of different types. Condition cannot be determined!")))))
+
+;Takes two values and determines whether or not val1 < val2. Values must be of type int.
+(define <_error
+  (lambda (val1 val2)
+    (cond
+      ((and (not (is_boolean? val1)) (not (is_boolean? val2))) (< val1 val2))
+      (else (error "One value is not of type int. Condition cannot be determined!")))))
+
+;Takes two values and determines whether or not val1 > val2. Values must be of type int.
+(define >_error
+  (lambda (val1 val2)
+    (cond
+      ((and (not (is_boolean? val1)) (not (is_boolean? val2))) (> val1 val2))
+      (else (error "One value is not of type int. Condition cannot be determined!")))))
+
+;Takes two values and determines whether or not val1 <= val2. Values must be of type int.
+(define <=_error
+  (lambda (val1 val2)
+    (cond
+      ((and (not (is_boolean? val1)) (not (is_boolean? val2))) (<= val1 val2))
+      (else (error "One value is not of type int. Condition cannot be determined!")))))
+
+;Takes two values and determines whether or not val1 >= val2. Values must be of type int.
+(define >=_error
+  (lambda (val1 val2)
+    (cond
+      ((and (not (is_boolean? val1)) (not (is_boolean? val2))) (>= val1 val2))
+      (else (error "One value is not of type int. Condition cannot be determined!")))))
 
 ;Takes two lists l1 and l2 and returns (l1 l2)
 (define encapsulate
