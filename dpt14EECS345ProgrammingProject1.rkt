@@ -15,9 +15,11 @@
   (lambda (expr state)
     (cond
       ((atom? expr) (if (number? expr) expr (get-var-value expr state)))
-      ((eq? (cddr expr) ()) (if (eq? (car expr) '=) (* -1 (cadr expr)) (error "An expression is being evaluated with too few operands."))) ;handles the unary "-" operator
+      ((eq? (cddr expr) ()) (if (eq? (car expr) '-) (* -1 (cadr expr)) (error "An expression is being evaluated with too few operands."))) ;handles the unary "-" operator
       ((eq? (car expr) '=) (M_value (caddr expr) state))
       ((is_math_op? expr) ((get_math_op expr) (M_value (cadr expr) state) (M_value (caddr expr) state)))
+      ((is_bool_op? expr) (M_boolean expr state))
+      ((is_comp_op? expr) (M_boolean expr state))
       (else (error "You somehow called M_value on something without a value.")))))
 
 ;Takes an expression and a state and returns the boolean value of the expression evaluated in the given state. The expression may contain assignments
@@ -73,21 +75,6 @@
       ((eq? (car expr) '&&) #t)
       ((eq? (car expr) '||) #t)
       ((eq? (car expr) '!) #t)
-      (else #f))))
-
-;If the expression is a boolean operation, it returns the appropriate operation. (Not is handled in M_boolean.)
-(define get_bool_op
-  (lambda (expr)
-    (cond
-      ((eq? (car expr) '&&) and_error)
-      ((eq? (car expr) '||) or_error))))
-
-;Tells us if the expression is a comparison operation.
-(define is_comp_op?
-  (lambda (expr)
-    (cond
-      ((null? expr) #f)
-      ((atom? expr) #f)
       ((eq? (car expr) '==) #t)
       ((eq? (car expr) '!=) #t)
       ((eq? (car expr) '<) #t)
@@ -96,10 +83,26 @@
       ((eq? (car expr) '>=) #t)
       (else #f))))
 
-;If the expression is a comparision operation, it returns the appropriate operation.
-(define get_comp_op
+;If the expression is a boolean operation, it returns the appropriate operation. (Not is handled in M_boolean.)
+(define get_bool_op
   (lambda (expr)
     (cond
+      ((eq? (car expr) '&&) and_error)
+      ((eq? (car expr) '||) or_error)
+      ((eq? (car expr) '!) not_error)
+      ((eq? (car expr) '==) eq_error)
+      ((eq? (car expr) '!=) not_eq_error)
+      ((eq? (car expr) '<) <_error)
+      ((eq? (car expr) '>) >_error)
+      ((eq? (car expr) '<=) <=_error)
+      ((eq? (car expr) '>=) >=_error))))
+
+;(define is_boolean
+  ;checks if it is a boolean value.
+
+
+;If the expression is a comparision operation, it returns the appropriate operation.
+
 
 ;Takes two supposedly boolean inputs and ands them if they are actually booleans. Otherwise throws an error
 (define and_error
