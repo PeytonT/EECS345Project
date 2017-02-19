@@ -10,6 +10,7 @@
   (lambda (first-line rest-of-program state master_return)
     (cond
       ((null? first-line) (error "Program Completed Without A Return Statement"))
+      ((null? rest-of-program) (evaluate () () (M_state first-line state master_return) master_return))
       ((evaluate (car rest-of-program) (cdr rest-of-program) (M_state first-line state master_return) master_return)))))
 
 ;Takes an expression and a state and returns the state after the expression has been evaluated in the state.
@@ -17,10 +18,11 @@
  (lambda (expr state master_return)
    (cond
       ((atom? expr) state)
+      ((null? expr) state)
       ((eq? (car expr) 'var) (declare (cadr expr) (cddr expr) state master_return))
       ((eq? (car expr) '=) (assign (cadr expr) (caddr expr) state master_return))
       ((eq? (car expr) 'return) (return (cadr expr) state master_return))
-      ((eq? (car expr) 'if) (if (cdr expr) state master_return))
+      ((eq? (car expr) 'if) (if* (cdr expr) state master_return))
       ((eq? (car expr) 'while) (while (cadr expr) (caddr expr) state master_return))
       (else state))))
      
@@ -232,10 +234,10 @@
         ;evaluating the condition in the input state
 ;Otherwise, if returns the result of the second expression evaluated in the resulting state of evaluating the condition
         ;in the input state
-(define if
+(define if*
   (lambda (expr state master_return)
     (cond
-      ((M_boolean (car expr) state) (M_state (cadr expr) (M_state (car expr) state master_return) master_return))
+      ((M_boolean (car expr) state master_return) (M_state (cadr expr) (M_state (car expr) state master_return) master_return))
       ((and (not (M_boolean (car expr) state master_return)) (not (eq? (cddr expr) ()))) (M_state (caddr expr) (M_state (car expr) state master_return) master_return))
       (else (M_state (car expr) state master_return)))))
 
