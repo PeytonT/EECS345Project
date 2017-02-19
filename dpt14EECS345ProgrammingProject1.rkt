@@ -30,7 +30,6 @@
       ((eq? (car expr) '=) (M_value (caddr expr) state))
       ((is_math_op? expr) ((get_math_op expr) (M_value (cadr expr) state) (M_value (caddr expr) state)))
       ((is_bool_op? expr) (M_boolean expr state))
-      ((is_comp_op? expr) (M_boolean expr state))
       (else (error "You somehow called M_value on something without a value.")))))
 
 ;Takes an expression and a state and returns the boolean value of the expression evaluated in the given state. The expression may contain assignments
@@ -115,9 +114,6 @@
       ((null? val) #f)
       ((or (eq? val #t) (eq? val #f)) #t)
       (else #f))))
-
-;If the expression is a comparision operation, it returns the appropriate operation.
-
 
 ;Takes two supposedly boolean inputs and ands them if they are actually booleans. Otherwise throws an error
 (define and_error
