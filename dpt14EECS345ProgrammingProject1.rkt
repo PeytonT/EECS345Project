@@ -16,6 +16,7 @@
 (define M_state
  (lambda (expr state master_return)
    (cond
+      ((atom? expr) state)
       ((eq? (car expr) 'var) (declare (cadr expr) (cddr expr) state master_return))
       ((eq? (car expr) '=) (assign (cadr expr) (caddr expr) state master_return))
       ((eq? (car expr) 'return) (return (cadr expr) state master_return))
@@ -209,7 +210,7 @@
   (lambda (var value state master_return)
     (cond
       ((null? value) (newfirsts var value state))
-      (else (newfirsts var (M_value (car value) state master_return) state master_return)))))
+      (else (newfirsts var (M_value (car value) state master_return) state)))))
 
 ;Takes a variable, an expression, and a state and returns the state where the variable is assigned to the value
 ;of the expression if the variable is declared. Otherwise creates an error.
@@ -245,5 +246,5 @@
 (define while
   (lambda (condition loop state master_return)
     (cond
-      ((M_boolean condition state master_return) (while condition loop (M_state loop (M_state condition state master_return) master_return)))
+      ((M_boolean condition state master_return) (while condition loop (M_state loop (M_state condition state master_return) master_return) master_return))
       (else (M_state condition state master_return)))))
