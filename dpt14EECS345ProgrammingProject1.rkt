@@ -1,5 +1,7 @@
 (load "simpleParser.scm")
 
+(require racket/trace)
+
 (define interpret
   (lambda (filename)
     (call/cc (lambda (return-from-interpret) ((evaluate (car (parser filename)) (cdr (parser filename)) (empty-state) return-from-interpret))))))
@@ -17,7 +19,7 @@
       ((eq? (car expr) 'var) (declare (cadr expr) (cddr expr) state))
       ((eq? (car expr) '=) (assign (cadr expr) (cddr expr) state))
       ((eq? (car expr) 'return) (return (cadr expr) state vital_return))
-      ((eq? (car expr) 'if) (if (cadr expr) (caddr expr) (caddr expr) state))
+      ((eq? (car expr) 'if) (if (cdr expr) state))
       ((eq? (car expr) 'while) (while (cadr expr) (caddr expr) state))
       (else state))))
      
@@ -224,17 +226,17 @@
   (lambda (expr state vital_return)
     (vital_return (M_value expr state))))
 
-;Takes a condition, a then-expression, an optional else-expression, and a state.
+;Takes an expression, containing a condition, a then-expression, an optional else-expression. Also takes a state.
 ;If the condition is true in the state, if returns the result of the first expression evaluated in the resulting state of
         ;evaluating the condition in the input state
 ;Otherwise, if returns the result of the second expression evaluated in the resulting state of evaluating the condition
         ;in the input state
 (define if
-  (lambda (cond_expr then_expr [else_expr ()] state)
+  (lambda (expr state)
     (cond
-      ((M_boolean cond_expr state) (M_state then_expr (M_state cond_expr state)))
-      ((and (not (M_boolean cond_expr state)) (not (eq? else_expr ()))) (M_state else_expr (M_state cond_expr state)))
-      (else (M_state cond_expr state)))))
+      ((M_boolean (car expr) state) (M_state (cadr expr) (M_state (car expr) state)))
+      ((and (not (M_boolean (car expr) state)) (not (eq? (cddr expr) ()))) (M_state (caddr expr) (M_state (car expr) state)))
+      (else (M_state (car expr) state)))))
 
 ;Takes a condition, a loop body, and a state.
 ;If the condition is true in the state, it recursively calls itself on the condition, the loop body, and the state after
