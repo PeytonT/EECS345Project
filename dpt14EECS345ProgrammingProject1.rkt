@@ -14,16 +14,12 @@
 (define M_value
   (lambda (expr state)
     (cond
-      ((is_boolean expr) expr)
       ((atom? expr) (if (number? expr) expr (get-var-value expr state)))
       ((eq? (cddr expr) ()) (if (eq? (car expr) '-) (* -1 (cadr expr)) (error "An expression is being evaluated with too few operands."))) ;handles the unary "-" operator
       ((eq? (car expr) '=) (M_value (caddr expr) state))
       ((is_math_op? expr) ((get_math_op expr) (M_value (cadr expr) state) (M_value (caddr expr) state)))
       ((is_bool_op? expr) (M_boolean expr state))
-<<<<<<< HEAD
       ((is_comp_op? expr) (M_boolean expr state))
-=======
->>>>>>> 1bbeeae5d4f6d937d05591258cbdf2682cfe75e9
       (else (error "You somehow called M_value on something without a value.")))))
 
 ;Takes an expression and a state and returns the boolean value of the expression evaluated in the given state. The expression may contain assignments
@@ -91,13 +87,12 @@
 (define get_bool_op
   (lambda (expr)
     (cond
-<<<<<<< HEAD
-      ((eq? (car expr) '&&) and_error) 
-      ((eq? (car expr) '||) or_error) 
-      ((eq? (car expr) '!) not_error) 
-      ((eq? (car expr) '==) eq_error) 
-      ((eq? (car expr) '!=) not_eq_error) 
-      ((eq? (car expr) '<) <_error) 
+      ((eq? (car expr) '&&) and_error) ;Done ADD NULL CONDITIONS?
+      ((eq? (car expr) '||) or_error) ;Done
+      ((eq? (car expr) '!) not_error) ;Done
+      ((eq? (car expr) '==) eq_error) ;Done
+      ((eq? (car expr) '!=) not_eq_error) ;Done
+      ((eq? (car expr) '<) <_error) ;Done
       ((eq? (car expr) '>) >_error) 
       ((eq? (car expr) '<=) <=_error) 
       ((eq? (car expr) '>=) >=_error)))) 
@@ -113,17 +108,6 @@
 
 ;If the expression is a comparision operation, it returns the appropriate operation.
 
-=======
-      ((eq? (car expr) '&&) and_error)
-      ((eq? (car expr) '||) or_error)
-      ((eq? (car expr) '!) not_error)
-      ((eq? (car expr) '==) eq_error)
-      ((eq? (car expr) '!=) not_eq_error)
-      ((eq? (car expr) '<) <_error)
-      ((eq? (car expr) '>) >_error)
-      ((eq? (car expr) '<=) <=_error)
-      ((eq? (car expr) '>=) >=_error))))
->>>>>>> 1bbeeae5d4f6d937d05591258cbdf2682cfe75e9
 
 ;Takes two supposedly boolean inputs and ands them if they are actually booleans. Otherwise throws an error
 (define and_error
@@ -206,7 +190,7 @@
 ;Takes a variable and a state and returns the state where the variable has been declared. If it is being declared but not initialized, use value ()
 (define declare
   (lambda (var value state)
-    (newfirsts var value state)))
+    (encapsulate (cons var (car state)) (cons value (cadr state)))))
 
 ;Takes a variable, an expression, and a state and returns the state where the variable is assigned to the value
 ;of the expression if the variable is declared. Otherwise creates an error.
