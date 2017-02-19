@@ -17,8 +17,8 @@
       ((eq? (car expr) 'var) (declare (cadr expr) (cddr expr) state))
       ((eq? (car expr) '=) (assign (cadr expr) (cddr expr) state)
       ((eq? (car expr) 'return) )
-      ((eq? (car expr) 'if) #t)
-      ((eq? (car expr) 'while) #t))))
+      ((eq? (car expr) 'if) (if (cadr expr) (caddr expr) (caddr expr) state))
+      ((eq? (car expr) 'while) (while (cadr expr) (caddr expr) state))))))
      
 
 ;Takes an expression and a state and returns the value of the expression evaluated in the given state. The expression may contain assignments.
@@ -210,7 +210,8 @@
       ((equal? var (caar state)) (encapsulate (car state) (cons (M_value expr state) (cdadr state))))
       (else (newfirsts (caar state) (cadr state) (assign var expr (encapsulate (cadr state) (cddr state))))))))
 
-;Takes an expression and a state returns the value of the expression in the state
+;Takes an expression and a state returns the value of the expression in the state.
+   ;Notably, does not even remotely work right now
 (define return
   (lambda (expr state)
     (M_value expr state)))
