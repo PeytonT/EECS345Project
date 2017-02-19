@@ -75,21 +75,6 @@
       ((eq? (car expr) '&&) #t)
       ((eq? (car expr) '||) #t)
       ((eq? (car expr) '!) #t)
-      (else #f))))
-
-;If the expression is a boolean operation, it returns the appropriate operation. (Not is handled in M_boolean.)
-(define get_bool_op
-  (lambda (expr)
-    (cond
-      ((eq? (car expr) '&&) and_error)
-      ((eq? (car expr) '||) or_error))))
-
-;Tells us if the expression is a comparison operation.
-(define is_comp_op?
-  (lambda (expr)
-    (cond
-      ((null? expr) #f)
-      ((atom? expr) #f)
       ((eq? (car expr) '==) #t)
       ((eq? (car expr) '!=) #t)
       ((eq? (car expr) '<) #t)
@@ -98,20 +83,19 @@
       ((eq? (car expr) '>=) #t)
       (else #f))))
 
-;If the expression is a comparision operation, it returns the appropriate operation.
-(define get_comp_op
+;If the expression is a boolean operation, it returns the appropriate operation. (Not is handled in M_boolean.)
+(define get_bool_op
   (lambda (expr)
     (cond
-      ((eq? (car expr) '==) equals_error)
-      ((eq? (car expr) '!=) not_equals_error)
+      ((eq? (car expr) '&&) and_error)
+      ((eq? (car expr) '||) or_error)
+      ((eq? (car expr) '!) not_error)
+      ((eq? (car expr) '==) eq_error)
+      ((eq? (car expr) '!=) not_eq_error)
       ((eq? (car expr) '<) <_error)
       ((eq? (car expr) '>) >_error)
       ((eq? (car expr) '<=) <=_error)
-      ((eq? (car expr) '>=) >=_error)
-
-;Takes two inputs and returns true if they are not equal, false otherwise.
-(define not_equal
-  (lambda (
+      ((eq? (car expr) '>=) >=_error))))
 
 ;Takes two supposedly boolean inputs and ands them if they are actually booleans. Otherwise throws an error
 (define and_error
