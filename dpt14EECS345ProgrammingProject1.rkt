@@ -96,12 +96,12 @@
 (define get_bool_op
   (lambda (expr)
     (cond
-      ((eq? (car expr) '&&) and_error) ;Done ADD NULL CONDITIONS?
-      ((eq? (car expr) '||) or_error) ;Done
-      ((eq? (car expr) '!) not_error) ;Done
-      ((eq? (car expr) '==) eq_error) ;Done
-      ((eq? (car expr) '!=) not_eq_error) ;Done
-      ((eq? (car expr) '<) <_error) ;Done
+      ((eq? (car expr) '&&) and_error)
+      ((eq? (car expr) '||) or_error) 
+      ((eq? (car expr) '!) not_error) 
+      ((eq? (car expr) '==) eq_error) 
+      ((eq? (car expr) '!=) not_eq_error) 
+      ((eq? (car expr) '<) <_error) 
       ((eq? (car expr) '>) >_error) 
       ((eq? (car expr) '<=) <=_error) 
       ((eq? (car expr) '>=) >=_error)))) 
