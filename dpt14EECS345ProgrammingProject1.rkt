@@ -17,7 +17,7 @@
       ((eq? (car expr) 'var) (declare (cadr expr) (cddr expr) state))
       ((eq? (car expr) '=) (assign (cadr expr) (cddr expr) state)
       ((eq? (car expr) 'return) )
-      ((eq? (car expr) 'if) (if (cadr expr) (caddr expr) (caddr expr) state))
+      ((eq? (car expr) 'if) ) (if (cadr expr) (caddr expr) (caddr expr) state))
       ((eq? (car expr) 'while) (while (cadr expr) (caddr expr) state))))))
      
 
@@ -119,6 +119,7 @@
 (define and_error
   (lambda (bool1 bool2)
     (cond
+      ((or (null? bool1) (null? bool2)) (error "Either one or both of your values are null."))
       ((and (is_boolean? bool1) (is_boolean? bool2)) (and bool1 bool2))
       (else (error "Attempted to treat a non-boolean as a boolean.")))))
 
@@ -126,6 +127,7 @@
 (define or_error
   (lambda (bool1 bool2)
     (cond
+      ((or (null? bool1) (null? bool2)) (error "Either one or both of your values are null."))
       ((and (is_boolean? bool1) (is_boolean? bool2)) (or bool1 bool2))
       (else (error "Attempted to treat a non-boolean as a boolean.")))))
 
@@ -133,6 +135,7 @@
 (define eq_error
   (lambda (val1 val2)
     (cond
+      ((or (null? val1) (null? val2)) (error "Either one or both of your values are null."))
       ((or (and (is_boolean? val1) (is_boolean? val2)) (and (not (is_boolean? val1)) (not (is_boolean? val2)))) (eq? val1 val2))
       (else (error "Values are of different types. Condition cannot be determined!")))))
 
@@ -140,6 +143,7 @@
 (define not_eq_error
   (lambda (val1 val2)
     (cond
+      ((or (null? val1) (null? val2)) (error "Either one or both of your values are null."))
       ((or (and (is_boolean? val1) (is_boolean? val2)) (and (not (is_boolean? val1)) (not (is_boolean? val2)))) (not (eq? val1 val2)))
       (else (error "Values are of different types. Condition cannot be determined!")))))
 
@@ -147,6 +151,7 @@
 (define <_error
   (lambda (val1 val2)
     (cond
+      ((or (null? val1) (null? val2)) (error "Either one or both of your values are null."))
       ((and (not (is_boolean? val1)) (not (is_boolean? val2))) (< val1 val2))
       (else (error "One value is not of type int. Condition cannot be determined!")))))
 
@@ -154,6 +159,7 @@
 (define >_error
   (lambda (val1 val2)
     (cond
+      ((or (null? val1) (null? val2)) (error "Either one or both of your values are null."))
       ((and (not (is_boolean? val1)) (not (is_boolean? val2))) (> val1 val2))
       (else (error "One value is not of type int. Condition cannot be determined!")))))
 
@@ -161,6 +167,7 @@
 (define <=_error
   (lambda (val1 val2)
     (cond
+      ((or (null? val1) (null? val2)) (error "Either one or both of your values are null."))
       ((and (not (is_boolean? val1)) (not (is_boolean? val2))) (<= val1 val2))
       (else (error "One value is not of type int. Condition cannot be determined!")))))
 
@@ -168,6 +175,7 @@
 (define >=_error
   (lambda (val1 val2)
     (cond
+      ((or (null? val1) (null? val2)) (error "Either one or both of your values are null."))
       ((and (not (is_boolean? val1)) (not (is_boolean? val2))) (>= val1 val2))
       (else (error "One value is not of type int. Condition cannot be determined!")))))
 
