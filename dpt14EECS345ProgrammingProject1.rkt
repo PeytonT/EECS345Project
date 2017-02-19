@@ -17,7 +17,7 @@
  (lambda (expr state vital_return)
    (cond
       ((eq? (car expr) 'var) (declare (cadr expr) (cddr expr) state))
-      ((eq? (car expr) '=) (assign (cadr expr) (cddr expr) state))
+      ((eq? (car expr) '=) (assign (cadr expr) (caddr expr) state))
       ((eq? (car expr) 'return) (return (cadr expr) state vital_return))
       ((eq? (car expr) 'if) (if (cdr expr) state))
       ((eq? (car expr) 'while) (while (cadr expr) (caddr expr) state))
@@ -76,7 +76,7 @@
       ((eq? (car expr) '-) -)
       ((eq? (car expr) '*) *)
       ((eq? (car expr) '/) /)
-      ((eq? (car expr) '%) %))))
+      ((eq? (car expr) '%) modulo))))
 
 ;Tells us if the expression is a boolean operation.
 (define is_bool_op?
@@ -115,7 +115,7 @@
     (cond
       ((null? val) #f)
       ((or (eq? val #t) (eq? val #f)) #t)
-      (else #f))))
+      (else #f))))      
 
 ;Takes two supposedly boolean inputs and ands them if they are actually booleans. Otherwise throws an error
 (define and_error
