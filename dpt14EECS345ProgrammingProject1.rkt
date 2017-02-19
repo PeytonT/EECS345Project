@@ -14,10 +14,12 @@
 (define M_value
   (lambda (expr state)
     (cond
+      ((is_boolean expr) expr)
       ((atom? expr) (if (number? expr) expr (get-var-value expr state)))
       ((eq? (cddr expr) ()) (if (eq? (car expr) '-) (* -1 (cadr expr)) (error "An expression is being evaluated with too few operands."))) ;handles the unary "-" operator
       ((eq? (car expr) '=) (M_value (caddr expr) state))
       ((is_math_op? expr) ((get_math_op expr) (M_value (cadr expr) state) (M_value (caddr expr) state)))
+      ((is_bool_op? expr) (M_boolean expr state))
       (else (error "You somehow called M_value on something without a value.")))))
 
 ;Takes an expression and a state and returns the boolean value of the expression evaluated in the given state. The expression may contain assignments
@@ -100,6 +102,16 @@
 (define get_comp_op
   (lambda (expr)
     (cond
+      ((eq? (car expr) '==) equals_error)
+      ((eq? (car expr) '!=) not_equals_error)
+      ((eq? (car expr) '<) <_error)
+      ((eq? (car expr) '>) >_error)
+      ((eq? (car expr) '<=) <=_error)
+      ((eq? (car expr) '>=) >=_error)
+
+;Takes two inputs and returns true if they are not equal, false otherwise.
+(define not_equal
+  (lambda (
 
 ;Takes two supposedly boolean inputs and ands them if they are actually booleans. Otherwise throws an error
 (define and_error
