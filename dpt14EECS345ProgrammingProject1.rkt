@@ -2,23 +2,24 @@
 
 (define interpret
   (lambda (filename)
-    (evaluate (car (parser filename)) (cdr (parser filename)) (empty-state))))
+    (call/cc (lambda (return-from-interpret) ((evaluate (car (parser filename)) (cdr (parser filename)) (empty-state) return-from-interpret))))))
 
 (define evaluate
-  (lambda (first-line rest-of-program state)
+  (lambda (first-line rest-of-program state vital_return)
     (cond
       ((null? first-line) (error "Program Completed Without A Return Statement"))
-      ((evaluate (car rest-of-program) (cdr rest-of-program) (M_state first-line state))))))
+      ((evaluate (car rest-of-program) (cdr rest-of-program) (M_state first-line state vital_return) vital_return)))))
 
 ;Takes an expression and a state and returns the state after the expression has been evaluated in the state.
 (define M_state
- (lambda (expr state)
+ (lambda (expr state vital_return)
    (cond
       ((eq? (car expr) 'var) (declare (cadr expr) (cddr expr) state))
-      ((eq? (car expr) '=) (assign (cadr expr) (cddr expr) state)
-      ((eq? (car expr) 'return) )
+      ((eq? (car expr) '=) (assign (cadr expr) (cddr expr) state))
+      ((eq? (car expr) 'return) (return (cadr expr) state vital_return))
       ((eq? (car expr) 'if) (if (cadr expr) (caddr expr) (caddr expr) state))
-      ((eq? (car expr) 'while) (while (cadr expr) (caddr expr) state))))))
+      ((eq? (car expr) 'while) (while (cadr expr) (caddr expr) state))
+      (else state))))
      
 
 ;Takes an expression and a state and returns the value of the expression evaluated in the given state. The expression may contain assignments.
@@ -28,7 +29,7 @@
       ((atom? expr) (if (number? expr) expr (get-var-value expr state)))
       ((eq? (cddr expr) ()) (if (eq? (car expr) '-) (* -1 (cadr expr)) (error "An expression is being evaluated with too few operands."))) ;handles the unary "-" operator
       ((eq? (car expr) '=) (M_value (caddr expr) state))
-      ((is_math_op? expr) ((get_math_op expr) (M_value (cadr expr) state) (M_value (caddr expr) state)))
+      ((is_math_op? expr) ((get_math_op expr) (M_value (cadr expr) state) (M_value (caddr expr) (M_state (cadr expr) state))))
       ((is_bool_op? expr) (M_boolean expr state))
       (else (error "You somehow called M_value on something without a value.")))))
 
@@ -39,7 +40,7 @@
       ((atom? expr) expr)
       ((eq? (cddr expr) '!) (not (M_boolean (cadr expr) state)))
       ((eq? (car expr) '=) (M_boolean (caddr expr) state))
-      ((is_bool_op? expr) ((get_bool_op expr) (M_value (cadr expr) state) (M_value (caddr expr) state)))
+      ((is_bool_op? expr) ((get_bool_op expr) (M_value (cadr expr) state) (M_value (caddr expr) (M_state (cadr expr) state))))
       (else (error "You somehow called M_boolean on something without a boolean value.")))))
 
 ;Checks if an object is an atom
@@ -105,7 +106,6 @@
       ((eq? (car expr) '>) >_error) 
       ((eq? (car expr) '<=) <=_error) 
       ((eq? (car expr) '>=) >=_error)))) 
-
 
 ;Checks to see if inputted value is a primitive boolean.
 (define is_boolean?
@@ -221,8 +221,8 @@
 ;Takes an expression and a state returns the value of the expression in the state.
    ;Notably, does not even remotely work right now
 (define return
-  (lambda (expr state)
-    (M_value expr state)))
+  (lambda (expr state vital_return)
+    (vital_return (M_value expr state))))
 
 ;Takes a condition, a then-expression, an optional else-expression, and a state.
 ;If the condition is true in the state, if returns the result of the first expression evaluated in the resulting state of
