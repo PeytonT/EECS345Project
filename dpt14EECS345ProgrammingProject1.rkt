@@ -10,6 +10,17 @@
       ((null? first-line) (error "Program Completed Without A Return Statement"))
       ((evaluate (car rest-of-program) (cdr rest-of-program) (M_state first-line state))))))
 
+;Takes an expression and a state and returns the state after the expression has been evaluated in the state.
+(define M_state
+ (lambda (expr state)
+   (cond
+      ((eq? (car expr) 'var) (declare (cadr expr) (cddr expr) state))
+      ((eq? (car expr) '=) (assign (cadr expr) (cddr expr) state)
+      ((eq? (car expr) 'return) )
+      ((eq? (car expr) 'if) #t)
+      ((eq? (car expr) 'while) #t))))
+     
+
 ;Takes an expression and a state and returns the value of the expression evaluated in the given state. The expression may contain assignments.
 (define M_value
   (lambda (expr state)
@@ -29,8 +40,7 @@
       ((atom? expr) expr)
       ((eq? (cddr expr) '!) (not (M_boolean (cadr expr) state)))
       ((eq? (car expr) '=) (M_boolean (caddr expr) state))
-      ((is_bool_op? expr) ((get_bool_op expr) (M_boolean (cadr expr) state) (M_boolean (caddr expr) state)))
-      ((is_comp_op? expr) ((get_comp_op expr) (M_value (cadr expr) state) (M_value (caddr expr) state)))
+      ((is_bool_op? expr) ((get_bool_op expr) (M_value (cadr expr) state) (M_value (caddr expr) state)))
       (else (error "You somehow called M_boolean on something without a boolean value.")))))
 
 ;Checks if an object is an atom
@@ -126,6 +136,7 @@
   (lambda (l)
     (encapsulate (cdar l) (cdadr l))))
 
+;Gets the value of a given variable in a given state, or errors if no such variable exists.
 (define get-var-value
   (lambda (var state)
     (cond
@@ -133,10 +144,12 @@
       ((eq? var (caar state)) (caadr state))
       (else (get-var-value var (removefirsts state))))))
 
-;Takes a variable and a state and returns the state where the variable has been declared. If it is being declared but not initialized, use value ()
+;Takes a variable, a list containing a value, and a state and returns the state where the variable has been declared. If it is being declared but not initialized, use value ()
 (define declare
   (lambda (var value state)
-    (newfirsts var value state)))
+    (cond
+      ((null? value) (newfirsts var value state))
+      (else (newfirsts var (car value) state)))))
 
 ;Takes a variable, an expression, and a state and returns the state where the variable is assigned to the value
 ;of the expression if the variable is declared. Otherwise creates an error.
@@ -146,3 +159,30 @@
       ((null? (car state)) (error "Variable is being assigned before it has been declared."))
       ((equal? var (caar state)) (encapsulate (car state) (cons (M_value expr state) (cdadr state))))
       (else (newfirsts (caar state) (cadr state) (assign var expr (encapsulate (cadr state) (cddr state))))))))
+
+;Takes an expression and a state returns the value of the expression in the state
+(define return
+  (lambda (expr state)
+    (M_value expr state)))
+
+;Takes a condition, a then-expression, an optional else-expression, and a state.
+;If the condition is true in the state, if returns the result of the first expression evaluated in the resulting state of
+        ;evaluating the condition in the input state
+;Otherwise, if returns the result of the second expression evaluated in the resulting state of evaluating the condition
+        ;in the input state
+(define if
+  (lambda (cond_expr then_expr [else_expr ()] state)
+    (cond
+      ((M_boolean cond_expr state) (M_state then_expr (M_state cond_expr state)))
+      ((and (not (M_boolean cond_expr state)) (not (eq? else_expr ()))) (M_state else_expr (M_state cond_expr state)))
+      (else (M_state cond_expr state)))))
+
+;Takes a condition, a loop body, and a state.
+;If the condition is true in the state, it recursively calls itself on the condition, the loop body, and the state after
+;the loop body has been called on the state after the condition has been called on the input state. Otherwise, it returns
+;the state after the condition has been called on the input state.
+(define while
+  (lambda (condition loop state)
+    (cond
+      ((M_boolean condition state) (while condition loop (M_state loop (M_state condition state))))
+      (else (M_state condition state)))))
