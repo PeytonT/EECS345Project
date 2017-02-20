@@ -32,7 +32,7 @@
   (lambda (expr state master_return)
     (cond
       ((atom? expr) (if (number? expr) expr (get-var-value expr state)))
-      ((eq? (cddr expr) ()) (if (eq? (car expr) '-) (* -1 (cadr expr)) (error "An expression is being evaluated with too few operands."))) ;handles the unary "-" operator
+      ((eq? (cddr expr) ()) (if (eq? (car expr) '-) (* -1 (M_value (cadr expr) state master_return)) (error "An expression is being evaluated with too few operands."))) ;handles the unary "-" operator
       ((eq? (car expr) '=) (M_value (caddr expr) state master_return))
       ((is_math_op? expr) ((get_math_op expr) (M_value (cadr expr) state master_return) (M_value (caddr expr) (M_state (cadr expr) state master_return) master_return)))
       ((is_bool_op? expr) (M_boolean expr state master_return))
@@ -199,12 +199,17 @@
   (lambda (l)
     (encapsulate (cdar l) (cdadr l))))
 
+;Takes two inputs and makes them the first two values in the lists in an input list of two lists.
+(define replacefirsts
+ (lambda (f1 f2 l)
+   (newfirsts f1 f2 (removefirsts l))))
+
 ;Gets the value of a given variable in a given state, or errors if no such variable exists.
 (define get-var-value
   (lambda (var state)
     (cond
       ((null? (car state)) (error "Attempted to use an undeclared variable."))
-      ((eq? var (caar state)) (caadr state))
+      ((eq? var (caar state)) (if (not (null? (caadr state))) (caadr state) (error "Attempting to use unassigned variable.")))
       (else (get-var-value var (removefirsts state))))))
 
 ;Takes a variable, a list containing a value, and a state and returns the state where the variable has been declared. If it is being declared but not initialized, use value ()
@@ -214,14 +219,19 @@
       ((null? value) (newfirsts var value state))
       (else (newfirsts var (M_value (car value) state master_return) state)))))
 
+;Takes a variable, a value, and a state and sets the value of that variable in the state to be the given value. If the variable is not in the state an error is thrown.
+(define update_state
+  (lambda (var value state)
+    (cond
+      ((null? (car state)) (error "Variable is being assigned before it has been declared."))
+      ((equal? var (caar state)) (replacefirsts var value state))
+      (else (newfirsts (caar state) (caadr state) (update_state var value (removefirsts state)))))))
+
 ;Takes a variable, an expression, and a state and returns the state where the variable is assigned to the value
 ;of the expression if the variable is declared. Otherwise creates an error.
 (define assign
   (lambda (var expr state master_return)
-    (cond
-      ((null? (car state)) (error "Variable is being assigned before it has been declared."))
-      ((equal? var (caar state)) (encapsulate (car state) (cons (M_value expr state master_return) (cdadr state))))
-      (else (newfirsts (caar state) (cadr state) (assign var expr (encapsulate (cadr state) (cddr state)) master_return))))))
+    (update_state var (M_value expr state master_return) (M_state expr state master_return))))
 
 ;Takes an expression and a state returns the value of the expression in the state.
    ;Notably, does not even remotely work right now
