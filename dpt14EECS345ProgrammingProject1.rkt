@@ -83,7 +83,7 @@
       ((eq? (car expr) '+) +)
       ((eq? (car expr) '-) -)
       ((eq? (car expr) '*) *)
-      ((eq? (car expr) '/) /)
+      ((eq? (car expr) '/) quotient)
       ((eq? (car expr) '%) modulo))))
 
 ;Tells us if the expression is a boolean operation.
