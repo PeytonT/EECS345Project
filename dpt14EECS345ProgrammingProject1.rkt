@@ -1,3 +1,8 @@
+;EECS345 Programming Project Part 1
+;Professor Lewicki
+;Project Partners: Peyton Turner (dpt14) and Jack La Rue (jvl13)
+;2/20/17
+;Language used: Pretty Big
 (load "simpleParser.scm")
 
 (require racket/trace)
