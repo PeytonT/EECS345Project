@@ -21,7 +21,7 @@
       ((null? expr) state)
       ((eq? (car expr) 'var) (declare (cadr expr) (cddr expr) state master_return))
       ((eq? (car expr) '=) (assign (cadr expr) (caddr expr) state master_return))
-      ((eq? (car expr) 'return) (return (cadr expr) state master_return))
+      ((eq? (car expr) 'return) (return (M_value (cadr expr) state master_return) state master_return))
       ((eq? (car expr) 'if) (if* (cdr expr) state master_return))
       ((eq? (car expr) 'while) (while (cadr expr) (caddr expr) state master_return))
       (else state))))
@@ -31,8 +31,8 @@
 (define M_value
   (lambda (expr state master_return)
     (cond
-      ((atom? expr) (if (number? expr) expr (get-var-value expr state)))
-      ((eq? (cddr expr) ()) (if (eq? (car expr) '-) (* -1 (M_value (cadr expr) state master_return)) (error "An expression is being evaluated with too few operands."))) ;handles the unary "-" operator
+      ((atom? expr) (if (number? expr) expr (if (or (equal? expr 'true) (equal? expr 'false)) (if (equal? expr 'true) #t #f) (get-var-value expr state))))
+      ((and (unary? expr) (eq? (car expr) '-)) (* -1 (M_value (cadr expr) state master_return)))
       ((eq? (car expr) '=) (M_value (caddr expr) state master_return))
       ((is_math_op? expr) ((get_math_op expr) (M_value (cadr expr) state master_return) (M_value (caddr expr) (M_state (cadr expr) state master_return) master_return)))
       ((is_bool_op? expr) (M_boolean expr state master_return))
@@ -42,8 +42,8 @@
 (define M_boolean
   (lambda (expr state master_return)
     (cond
-      ((atom? expr) expr)
-      ((eq? (cddr expr) '!) (not (M_boolean (cadr expr) state master_return)))
+      ((atom? expr) (if (or (equal? expr 'true) (equal? expr 'false)) (if (equal? expr 'true) #t #f) expr))
+      ((and (unary? expr) (eq? (car expr) '!)) (not (M_boolean (cadr expr) state master_return)))
       ((eq? (car expr) '=) (M_boolean (caddr expr) state master_return))
       ((is_bool_op? expr) ((get_bool_op expr) (M_value (cadr expr) state master_return) (M_value (caddr expr) (M_state (cadr expr) state master_return) master_return)))
       (else (error "You somehow called M_boolean on something without a boolean value.")))))
@@ -52,6 +52,11 @@
 (define atom?
   (lambda (x)
     (and (not (pair? x)) (not (null? x)))))
+
+;Checks if an expression is unary
+(define unary?
+  (lambda (expr)
+    (eq? (cddr expr) ())))
     
 ;Creates an empty program state
 (define empty-state
@@ -104,7 +109,7 @@
     (cond
       ((eq? (car expr) '&&) and_error)
       ((eq? (car expr) '||) or_error) 
-      ((eq? (car expr) '!) not_error) 
+      ;((eq? (car expr) '!) not_error) This should never happen, since it should be caught in M_boolean
       ((eq? (car expr) '==) eq_error) 
       ((eq? (car expr) '!=) not_eq_error) 
       ((eq? (car expr) '<) <_error) 
@@ -236,8 +241,10 @@
 ;Takes an expression and a state returns the value of the expression in the state.
    ;Notably, does not even remotely work right now
 (define return
-  (lambda (expr state master_return)
-    (master_return (M_value expr state master_return))))
+  (lambda (value state master_return)
+    (cond
+      ((is_boolean? value) (if value (master_return 'true) (master_return 'false)))
+      (else (master_return value)))))
 
 ;Takes an expression, containing a condition, a then-expression, an optional else-expression. Also takes a state.
 ;If the condition is true in the state, if returns the result of the first expression evaluated in the resulting state of
