@@ -13,7 +13,7 @@
 ;Once return has been called throughout the evaluation of the parse tree, call/cc will automatically take the continuation return value and output it into the interactions pane.
 (define interpret
   (lambda (filename)
-    (call/cc (lambda (return-from-interpret) ((evaluate (car (parser filename)) (cdr (parser filename)) (empty-state) return-from-interpret))))))
+    (call/cc (lambda (return-from-interpret) ((evaluate (first (parser filename)) (rest (parser filename)) (empty-state) return-from-interpret))))))
 
 ;Takes the first expression, the rest of the parse tree, a state, and the continuation return. If the first expression is null, an error is thrown, as a program cannot not have a return statement.
 ;If the rest of the program is null, then the first expression is passed on to M_State to be evaluated further. Otherwise, the function calls M_State on the first expression and recursively calls M_State
@@ -23,7 +23,7 @@
     (cond
       ((null? first-line) (error "Program Completed Without A Return Statement"))
       ((null? rest-of-program) (evaluate () () (M_state first-line state master_return) master_return))
-      ((evaluate (car rest-of-program) (cdr rest-of-program) (M_state first-line state master_return) master_return)))))
+      ((evaluate (first rest-of-program) (rest rest-of-program) (M_state first-line state master_return) master_return)))))
 
 ;Takes an expression, a state, and the continuation return and returns the state after the inputted expression has been evaluated in said state. The expression can relate to
 ;variable declaration, variable assignments, returning values, if statements and while loops.
@@ -32,11 +32,11 @@
    (cond
       ((atom? expr) state)
       ((null? expr) state)
-      ((eq? (car expr) 'var) (declare (cadr expr) (cddr expr) state master_return))
-      ((eq? (car expr) '=) (assign (cadr expr) (caddr expr) state master_return))
-      ((eq? (car expr) 'return) (return (M_value (cadr expr) state master_return) state master_return))
-      ((eq? (car expr) 'if) (if* (cdr expr) state master_return))
-      ((eq? (car expr) 'while) (while (cadr expr) (caddr expr) state master_return))
+      ((eq? (first expr) 'var) (declare (first-of-restexpr) (rest-of-restexpr) state master_return))
+      ((eq? (first expr) '=) (assign (first-of-restexpr) (first-of-rest-of-rest expr) state master_return))
+      ((eq? (first expr) 'return) (return (M_value (first-of-restexpr) state master_return) state master_return))
+      ((eq? (first expr) 'if) (if* (rest expr) state master_return))
+      ((eq? (first expr) 'while) (while (first-of-restexpr) (first-of-rest-of-rest expr) state master_return))
       (else state))))
      
 
@@ -46,9 +46,9 @@
   (lambda (expr state master_return)
     (cond
       ((atom? expr) (if (number? expr) expr (if (or (equal? expr 'true) (equal? expr 'false)) (if (equal? expr 'true) #t #f) (get-var-value expr state))))
-      ((and (unary? expr) (eq? (car expr) '-)) (* -1 (M_value (cadr expr) state master_return)))
-      ((eq? (car expr) '=) (M_value (caddr expr) state master_return))
-      ((is_math_op? expr) ((get_math_op expr) (M_value (cadr expr) state master_return) (M_value (caddr expr) (M_state (cadr expr) state master_return) master_return)))
+      ((and (unary? expr) (eq? (first expr) '-)) (* -1 (M_value (first-of-restexpr) state master_return)))
+      ((eq? (first expr) '=) (M_value (first-of-rest-of-rest expr) state master_return))
+      ((is_math_op? expr) ((get_math_op expr) (M_value (first-of-restexpr) state master_return) (M_value (first-of-rest-of-rest expr) (M_state (first-of-restexpr) state master_return) master_return)))
       ((is_bool_op? expr) (M_boolean expr state master_return))
       (else (error "You somehow called M_value on something without a value.")))))
 
@@ -58,9 +58,9 @@
   (lambda (expr state master_return)
     (cond
       ((atom? expr) (if (or (equal? expr 'true) (equal? expr 'false)) (if (equal? expr 'true) #t #f) expr))
-      ((and (unary? expr) (eq? (car expr) '!)) (not (M_boolean (cadr expr) state master_return)))
-      ((eq? (car expr) '=) (M_boolean (caddr expr) state master_return))
-      ((is_bool_op? expr) ((get_bool_op expr) (M_value (cadr expr) state master_return) (M_value (caddr expr) (M_state (cadr expr) state master_return) master_return)))
+      ((and (unary? expr) (eq? (first expr) '!)) (not (M_boolean (first-of-restexpr) state master_return)))
+      ((eq? (first expr) '=) (M_boolean (first-of-rest-of-rest expr) state master_return))
+      ((is_bool_op? expr) ((get_bool_op expr) (M_value (first-of-restexpr) state master_return) (M_value (first-of-rest-of-rest expr) (M_state (first-of-restexpr) state master_return) master_return)))
       (else (error "You somehow called M_boolean on something without a boolean value.")))))
 
 ;Checks if an object is an atom. Returns true if so.
@@ -71,7 +71,7 @@
 ;Checks if an expression is unary. Returns true if so.
 (define unary?
   (lambda (expr)
-    (eq? (cddr expr) ())))
+    (eq? (rest-of-restexpr) ())))
     
 ;Creates an empty program state
 (define empty-state
@@ -84,22 +84,22 @@
     (cond
       ((null? expr) #f)
       ((atom? expr) #f)
-      ((eq? (car expr) '+) #t)
-      ((eq? (car expr) '-) #t)
-      ((eq? (car expr) '*) #t)
-      ((eq? (car expr) '/) #t)
-      ((eq? (car expr) '%) #t)
+      ((eq? (first expr) '+) #t)
+      ((eq? (first expr) '-) #t)
+      ((eq? (first expr) '*) #t)
+      ((eq? (first expr) '/) #t)
+      ((eq? (first expr) '%) #t)
       (else #f))))
 
 ;If expression is a math operation, it returns the math operation
 (define get_math_op
   (lambda (expr)
     (cond
-      ((eq? (car expr) '+) +)
-      ((eq? (car expr) '-) -)
-      ((eq? (car expr) '*) *)
-      ((eq? (car expr) '/) quotient)
-      ((eq? (car expr) '%) modulo))))
+      ((eq? (first expr) '+) +)
+      ((eq? (first expr) '-) -)
+      ((eq? (first expr) '*) *)
+      ((eq? (first expr) '/) quotient)
+      ((eq? (first expr) '%) modulo))))
 
 ;Tells us if the expression is a boolean operation.
 (define is_bool_op?
@@ -107,30 +107,30 @@
     (cond
       ((null? expr) #f)
       ((atom? expr) #f)
-      ((eq? (car expr) '&&) #t)
-      ((eq? (car expr) '||) #t)
-      ((eq? (car expr) '!) #t)
-      ((eq? (car expr) '==) #t)
-      ((eq? (car expr) '!=) #t)
-      ((eq? (car expr) '<) #t)
-      ((eq? (car expr) '>) #t)
-      ((eq? (car expr) '<=) #t)
-      ((eq? (car expr) '>=) #t)
+      ((eq? (first expr) '&&) #t)
+      ((eq? (first expr) '||) #t)
+      ((eq? (first expr) '!) #t)
+      ((eq? (first expr) '==) #t)
+      ((eq? (first expr) '!=) #t)
+      ((eq? (first expr) '<) #t)
+      ((eq? (first expr) '>) #t)
+      ((eq? (first expr) '<=) #t)
+      ((eq? (first expr) '>=) #t)
       (else #f))))
 
 ;If the expression is a boolean operation, it returns the appropriate operation. (Not is handled in M_boolean.)
 (define get_bool_op
   (lambda (expr)
     (cond
-      ((eq? (car expr) '&&) and_error)
-      ((eq? (car expr) '||) or_error) 
-      ;((eq? (car expr) '!) not_error) This should never happen, since it should be caught in M_boolean
-      ((eq? (car expr) '==) eq_error) 
-      ((eq? (car expr) '!=) not_eq_error) 
-      ((eq? (car expr) '<) <_error) 
-      ((eq? (car expr) '>) >_error) 
-      ((eq? (car expr) '<=) <=_error) 
-      ((eq? (car expr) '>=) >=_error)))) 
+      ((eq? (first expr) '&&) and_error)
+      ((eq? (first expr) '||) or_error) 
+      ;((eq? (first expr) '!) not_error) This should never happen, since it should be caught in M_boolean
+      ((eq? (first expr) '==) eq_error) 
+      ((eq? (first expr) '!=) not_eq_error) 
+      ((eq? (first expr) '<) <_error) 
+      ((eq? (first expr) '>) >_error) 
+      ((eq? (first expr) '<=) <=_error) 
+      ((eq? (first expr) '>=) >=_error)))) 
 
 ;Checks to see if inputted value is a primitive boolean.
 (define is_boolean?
@@ -212,12 +212,12 @@
 ;Takes three inputs: two values and a list. Adds new first elements to a list of two lists.
 (define newfirsts
   (lambda (f1 f2 l)
-    (encapsulate (cons f1 (car l)) (cons f2 (cadr l)))))
+    (encapsulate (cons f1 (first l)) (cons f2 (first-of-rest l)))))
 
 ;Removes the first elements of the sublists of a list. Said list is comprised of two lists.
 (define removefirsts
   (lambda (l)
-    (encapsulate (cdar l) (cdadr l))))
+    (encapsulate (rest-of-first l) (rest-of-first-of-rest l))))
 
 ;Takes two inputs and makes them the first two values in the lists in an input list of two lists.
 (define replacefirsts
@@ -228,8 +228,8 @@
 (define get-var-value
   (lambda (var state)
     (cond
-      ((null? (car state)) (error "Attempted to use an undeclared variable."))
-      ((eq? var (caar state)) (if (not (null? (caadr state))) (caadr state) (error "Attempting to use unassigned variable.")))
+      ((null? (first state)) (error "Attempted to use an undeclared variable."))
+      ((eq? var (first-of-first state)) (if (not (null? (first-of-first-of-rest state))) (first-of-first-of-rest state) (error "Attempting to use unassigned variable.")))
       (else (get-var-value var (removefirsts state))))))
 
 ;Takes a variable, a list containing a value, a state, and the continuation return value and
@@ -238,15 +238,15 @@
   (lambda (var value state master_return)
     (cond
       ((null? value) (newfirsts var value state))
-      (else (newfirsts var (M_value (car value) state master_return) state)))))
+      (else (newfirsts var (M_value (first value) state master_return) state)))))
 
 ;Takes a variable, a value, and a state and sets the value of that variable in the state to be the given value. If the variable is not in the state an error is thrown.
 (define update_state
   (lambda (var value state)
     (cond
-      ((null? (car state)) (error "Variable is being assigned before it has been declared."))
-      ((equal? var (caar state)) (replacefirsts var value state))
-      (else (newfirsts (caar state) (caadr state) (update_state var value (removefirsts state)))))))
+      ((null? (first state)) (error "Variable is being assigned before it has been declared."))
+      ((equal? var (first-of-first state)) (replacefirsts var value state))
+      (else (newfirsts (first-of-first state) (first-of-first-of-rest state) (update_state var value (removefirsts state)))))))
 
 ;Takes a variable, an expression, a state, and the continuation return value and returns the state where the variable is assigned to the value
 ;of the expression if the variable is declared. Otherwise creates an error.
@@ -270,9 +270,9 @@
 (define if*
   (lambda (expr state master_return)
     (cond
-      ((M_boolean (car expr) state master_return) (M_state (cadr expr) (M_state (car expr) state master_return) master_return))
-      ((and (not (M_boolean (car expr) state master_return)) (not (eq? (cddr expr) ()))) (M_state (caddr expr) (M_state (car expr) state master_return) master_return))
-      (else (M_state (car expr) state master_return)))))
+      ((M_boolean (first expr) state master_return) (M_state (first-of-restexpr) (M_state (first expr) state master_return) master_return))
+      ((and (not (M_boolean (first expr) state master_return)) (not (eq? (rest-of-restexpr) ()))) (M_state (first-of-rest-of-rest expr) (M_state (first expr) state master_return) master_return))
+      (else (M_state (first expr) state master_return)))))
 
 ;Takes a condition, a loop body, a state, and the continuation return value.
 ;If the condition is true in the state, it recursively calls itself on the condition, the loop body, and the state after
@@ -283,3 +283,65 @@
     (cond
       ((M_boolean condition state master_return) (while condition loop (M_state loop (M_state condition state master_return) master_return) master_return))
       (else (M_state condition state master_return)))))
+
+;This section is for abstractions of the car/cdr functions. first and rest are already implemented by Pretty Big
+
+;Functionality of caar
+(define first-of-first
+  (lambda (l)
+    (caar l)))
+
+;Functionality of cddr
+(define rest-of-rest
+  (lambda (l)
+    (cddr l)))
+
+;Functionality of cadr
+(define first-of-rest
+  (lambda (l)
+    (cadr l)))
+
+;Functionality of cdar
+(define rest-of-first
+  (lambda (l)
+    (cdar l)))
+
+;Functionality of caaar
+(define first-of-first-of-first
+  (lambda (l)
+    (caaar l)))
+
+;Functionality of caadr
+(define first-of-first-of-rest
+  (lambda (l)
+    (caadr l)))
+
+;Functionality of cadar
+(define first-of-rest-of-first
+  (lambda (l)
+    (cadar l)))
+
+;Functionality of caddr
+(define first-of-rest-of-rest
+  (lambda (l)
+    (caddr l)))
+
+;Functionality of cdaar
+(define rest-of-first-of-first
+  (lambda (l)
+    (cdaar l)))
+
+;Functionality of cdadr
+(define rest-of-first-of-rest
+  (lambda (l)
+    (cdadr l)))
+
+;Functionality of cddar
+(define rest-of-rest-of-first
+  (lambda (l)
+    (cddar l)))
+
+;Functionality of cdddr
+(define rest-of-rest-of-rest
+  (lambda (l)
+    (cdddr l)))
