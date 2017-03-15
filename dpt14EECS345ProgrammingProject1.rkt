@@ -32,11 +32,11 @@
    (cond
       ((atom? expr) state)
       ((null? expr) state)
-      ((eq? (first expr) 'var) (declare (first-of-restexpr) (rest-of-restexpr) state master_return))
-      ((eq? (first expr) '=) (assign (first-of-restexpr) (first-of-rest-of-rest expr) state master_return))
-      ((eq? (first expr) 'return) (return (M_value (first-of-restexpr) state master_return) state master_return))
+      ((eq? (first expr) 'var) (declare (first-of-rest expr) (rest-of-rest expr) state master_return))
+      ((eq? (first expr) '=) (assign (first-of-rest expr) (first-of-rest-of-rest expr) state master_return))
+      ((eq? (first expr) 'return) (return (M_value (first-of-rest expr) state master_return) state master_return))
       ((eq? (first expr) 'if) (if* (rest expr) state master_return))
-      ((eq? (first expr) 'while) (while (first-of-restexpr) (first-of-rest-of-rest expr) state master_return))
+      ((eq? (first expr) 'while) (while (first-of-rest expr) (first-of-rest-of-rest expr) state master_return))
       (else state))))
      
 
@@ -46,9 +46,9 @@
   (lambda (expr state master_return)
     (cond
       ((atom? expr) (if (number? expr) expr (if (or (equal? expr 'true) (equal? expr 'false)) (if (equal? expr 'true) #t #f) (get-var-value expr state))))
-      ((and (unary? expr) (eq? (first expr) '-)) (* -1 (M_value (first-of-restexpr) state master_return)))
+      ((and (unary? expr) (eq? (first expr) '-)) (* -1 (M_value (first-of-rest expr) state master_return)))
       ((eq? (first expr) '=) (M_value (first-of-rest-of-rest expr) state master_return))
-      ((is_math_op? expr) ((get_math_op expr) (M_value (first-of-restexpr) state master_return) (M_value (first-of-rest-of-rest expr) (M_state (first-of-restexpr) state master_return) master_return)))
+      ((is_math_op? expr) ((get_math_op expr) (M_value (first-of-rest expr) state master_return) (M_value (first-of-rest-of-rest expr) (M_state (first-of-rest expr) state master_return) master_return)))
       ((is_bool_op? expr) (M_boolean expr state master_return))
       (else (error "You somehow called M_value on something without a value.")))))
 
@@ -58,9 +58,9 @@
   (lambda (expr state master_return)
     (cond
       ((atom? expr) (if (or (equal? expr 'true) (equal? expr 'false)) (if (equal? expr 'true) #t #f) expr))
-      ((and (unary? expr) (eq? (first expr) '!)) (not (M_boolean (first-of-restexpr) state master_return)))
+      ((and (unary? expr) (eq? (first expr) '!)) (not (M_boolean (first-of-rest expr) state master_return)))
       ((eq? (first expr) '=) (M_boolean (first-of-rest-of-rest expr) state master_return))
-      ((is_bool_op? expr) ((get_bool_op expr) (M_value (first-of-restexpr) state master_return) (M_value (first-of-rest-of-rest expr) (M_state (first-of-restexpr) state master_return) master_return)))
+      ((is_bool_op? expr) ((get_bool_op expr) (M_value (first-of-rest expr) state master_return) (M_value (first-of-rest-of-rest expr) (M_state (first-of-rest expr) state master_return) master_return)))
       (else (error "You somehow called M_boolean on something without a boolean value.")))))
 
 ;Checks if an object is an atom. Returns true if so.
@@ -71,7 +71,7 @@
 ;Checks if an expression is unary. Returns true if so.
 (define unary?
   (lambda (expr)
-    (eq? (rest-of-restexpr) ())))
+    (eq? (rest-of-rest expr) ())))
     
 ;Creates an empty program state
 (define empty-state
@@ -270,8 +270,8 @@
 (define if*
   (lambda (expr state master_return)
     (cond
-      ((M_boolean (first expr) state master_return) (M_state (first-of-restexpr) (M_state (first expr) state master_return) master_return))
-      ((and (not (M_boolean (first expr) state master_return)) (not (eq? (rest-of-restexpr) ()))) (M_state (first-of-rest-of-rest expr) (M_state (first expr) state master_return) master_return))
+      ((M_boolean (first expr) state master_return) (M_state (first-of-rest expr) (M_state (first expr) state master_return) master_return))
+      ((and (not (M_boolean (first expr) state master_return)) (not (eq? (rest-of-rest expr) ()))) (M_state (first-of-rest-of-rest expr) (M_state (first expr) state master_return) master_return))
       (else (M_state (first expr) state master_return)))))
 
 ;Takes a condition, a loop body, a state, and the continuation return value.
