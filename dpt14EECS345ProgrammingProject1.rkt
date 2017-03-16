@@ -78,6 +78,16 @@
   (lambda ()
     '(() ())))
 
+;Creates an empty program state in the layers form
+(define empty-state2
+  (lambda ()
+    '((() ()))))
+
+;Adds an empty layer to the top of the current state
+(define new_block
+  (lambda (state)
+    (cons (first (empty-state2)) state)))
+
 ;Tells us if the expression is a math operation
 (define is_math_op?
   (lambda (expr)
@@ -214,6 +224,11 @@
   (lambda (f1 f2 l)
     (encapsulate (cons f1 (first l)) (cons f2 (first-of-rest l)))))
 
+;Takes an input list of two lists and returns a list of the first two elements of those lists
+(define getfirsts
+  (lambda (l)
+    (cons (first-of-first l) (cons (first-of-first-of-rest l) ()))))
+
 ;Removes the first elements of the sublists of a list. Said list is comprised of two lists.
 (define removefirsts
   (lambda (l)
@@ -232,13 +247,38 @@
       ((eq? var (first-of-first state)) (if (not (null? (first-of-first-of-rest state))) (first-of-first-of-rest state) (error "Attempting to use unassigned variable.")))
       (else (get-var-value var (removefirsts state))))))
 
+;Gets the value of a variable possibly stored in a layer. Returns (boolean value), where boolean is true and value is the var's value if the var was present, and boolean is false otherwise
+(define get-var-value-layer
+  (lambda (var layer)
+    (cond
+      ((null? (first layer)) (cons #f '(())))
+      ((eq? var (first-of-first layer)) (if (not (null? (first-of-first-of-rest layer))) (cons #t (cons (first-of-first-of-rest layer) '())) (error "Attempting to use unassigned variable.")))
+      (else (get-var-value-layer var (removefirsts layer))))))
+
+;Gets the value of a given varable in a given layer state, or errors if no such variable exists.
+(define get-var-value2
+  (lambda (var state)
+    (cond
+      ((null? state) (error "Attempting to use an undeclared variable."))
+      ((first (get-var-value-layer var (first state))) (first-of-rest (get-var-value-layer var (first state))))
+      (else (get-var-value2 var (rest state))))))
+
 ;Takes a variable, a list containing a value, a state, and the continuation return value and
-;returns the state where the variable has been declared. If it is being declared but not initialized, use value ()
+;returns the state where the variable has been declared. If it is being declared but not initialized, use value ().
 (define declare
   (lambda (var value state master_return)
     (cond
       ((null? value) (newfirsts var value state))
+      ;What's going on with calling M_value on (first value). Shouldn't it just be called on value? I wrote this and I am confused. DPT
       (else (newfirsts var (M_value (first value) state master_return) state)))))
+
+;Takes a variable, a list containing a value, a state, and the continuation return value and returns the state where
+;the variable has been declared in the top layer. If it is being declared but not initialized, use value ().
+(define declare2
+  (lambda (var value state master_return)
+    (cond
+      ((null? value) (cons (newfirsts var value (first state)) (rest state)))
+      (else (cons (newfirsts var (M_value value state master_return) (first state)) (rest state))))))
 
 ;Takes a variable, a value, and a state and sets the value of that variable in the state to be the given value. If the variable is not in the state an error is thrown.
 (define update_state
@@ -247,6 +287,32 @@
       ((null? (first state)) (error "Variable is being assigned before it has been declared."))
       ((equal? var (first-of-first state)) (replacefirsts var value state))
       (else (newfirsts (first-of-first state) (first-of-first-of-rest state) (update_state var value (removefirsts state)))))))
+
+;Takes a variable, a value, and a layer of a state and sets the value of that variable in the state to be the given value if it is present.
+;Returns (#t updated_layer) if the value was present, and (#f layer) otherwise.
+(define update_layer
+  (lambda (var value layer)
+    (cond
+      ((null? (first layer)) (cons #f (cons layer ())))
+      ((eq? var (first-of-first layer)) (cons #t (cons (replacefirsts var value layer) ())))
+      (else (let ([result (update_layer var value (removefirsts layer))])
+              (cons (first result) (cons (newfirsts (first (getfirsts layer)) (first-of-rest (getfirsts layer)) (first-of-rest result)) ()))))))) ;What have I done? DPT
+
+;Takes a variable and a layer and returns true if the variable is in the layer and false otherwise.
+(define in_layer
+  (lambda (var layer)
+    (cond
+      ((null? (first layer)) #f)
+      ((eq? var (first-of-first layer)) #t)
+      (else (in_layer var (removefirsts layer))))))
+
+;Takes a variable, a value, and a state and sets the value of that variable in the state to be the given value. Works on layer states.
+(define update_state2
+  (lambda (var value state)
+    (cond
+      ((null? state) (error "Variable is being assigned before it has been declared."))
+      ((in_layer var (first state)) (cons (update_layer var value (first state)) (rest state)))
+      (else (cons (first state) (update_state2 var value (rest state)))))))
 
 ;Takes a variable, an expression, a state, and the continuation return value and returns the state where the variable is assigned to the value
 ;of the expression if the variable is declared. Otherwise creates an error.
