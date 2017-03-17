@@ -311,7 +311,7 @@
   (lambda (var value state)
     (cond
       ((null? state) (error "Variable is being assigned before it has been declared."))
-      ((in_layer var (first state)) (cons (update_layer var value (first state)) (rest state)))
+      ((in_layer var (first state)) (cons (first-of-rest (update_layer var value (first state))) (rest state)))
       (else (cons (first state) (update_state2 var value (rest state)))))))
 
 ;Takes a variable, an expression, a state, and the continuation return value and returns the state where the variable is assigned to the value
