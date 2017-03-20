@@ -352,6 +352,14 @@
         ((in_layer var (first state)) (set-box! boxed_state (cons (first_of_rest (update_layer var value (first state))) (rest state))))
         (else (set-box! boxed_state (cons (first state) (update_state2 var value (rest state)))))))))
 
+;Takes a begin statement and returns a list of all of its expressions. THIS MAY NEED TO BE CHANGED.
+(define begin_handler
+  (lambda (l)
+    (cond
+      ((null? l) '())
+      ((eq? (car l) 'begin) (cdr l))
+      (else (error "Not a begin statement.")))))
+
 ;Takes a variable, an expression, a state, and the continuation return value and returns the state where the variable is assigned to the value
 ;of the expression if the variable is declared. Otherwise creates an error.
 (define assign
