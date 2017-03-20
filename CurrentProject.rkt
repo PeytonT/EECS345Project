@@ -1,7 +1,7 @@
-;EECS345 Programming Project Part 1
+;EECS345 Programming Project Part 2
 ;Professor Lewicki
 ;Project Partners: Peyton Turner (dpt14) and Jack La Rue (jvl13)
-;2/20/17
+;3/20/17
 ;Language used: Pretty Big
 (load "simpleParser.scm")
 
@@ -13,31 +13,25 @@
 ;Once return has been called throughout the evaluation of the parse tree, call/cc will automatically take the continuation return value and output it into the interactions pane.
 (define interpret
   (lambda (filename)
-    (call/cc (lambda (return_from_interpret) ((evaluate (first (parser filename)) (rest (parser filename)) (empty_state) return_from_interpret))))))
+    (call/cc (lambda (return_from_interpret) ((evaluate (first (parser filename)) (rest (parser filename)) (empty_state_box) return_from_interpret))))))
 
-;Takes the first expression, the rest of the parse tree, a state, and the continuation return. If the first expression is null, an error is thrown, as a program cannot not have a return statement.
+;Takes the first expression, the rest of the parse tree, a boxed state, and the continuation return. If the first expression is null, an error is thrown, as a program cannot not have a return statement.
 ;If the rest of the program is null, then the first expression is passed on to M_State to be evaluated further. Otherwise, the function calls M_State on the first expression and recursively calls M_State
 ;on the rest of the expressions in rest_of_program.
 (define evaluate
-  (lambda (first_line rest_of_program state master_return)
+  (lambda (first_line rest_of_program boxed_state master_return)
     (cond
       ((null? first_line) (error "Program Completed Without A Return Statement"))
-      ((null? rest_of_program) (evaluate () () (M_state first_line state master_return) master_return))
-      ((evaluate (first rest_of_program) (rest rest_of_program) (M_state first_line state master_return) master_return)))))
-
-;Takes an expression, a state, and the continuation return and returns the state after the input expression has been evaluated in said state. The expression can relate to
-;variable declaration, variable assignments, returning values, if statements and while loops.
-(define M_state
- (lambda (expr state master_return)
-   (cond
-      ((atom? expr) state)
-      ((null? expr) state)
-      ((eq? (first expr) 'var) (declare (first_of_rest expr) (rest_of_rest expr) state master_return))
-      ((eq? (first expr) '=) (assign (first_of_rest expr) (first_of_rest_of_rest expr) state master_return))
-      ((eq? (first expr) 'return) (return (M_value (first_of_rest expr) state master_return) state master_return))
-      ((eq? (first expr) 'if) (if* (rest expr) state master_return))
-      ((eq? (first expr) 'while) (while (first_of_rest expr) (first_of_rest_of_rest expr) state master_return))
-      (else state))))
+      ((null? rest_of_program) (M_state_box first_line boxed_state master_return
+                                 (lambda (x) (error "Called break outside of a loop"))
+                                 (lambda (y) (error "Called continue outside of a loop"))
+                                 (lambda (z) (error "Threw an exception outside of a try block"))))
+      (else (begin
+              (M_state_box first_line boxed_state master_return
+                           (lambda (x) (error "Called break outside of a loop"))
+                           (lambda (y) (error "Called continue outside of a loop"))
+                           (lambda (z) (error "Threw an exception outside of a try block")))
+                   (evaluate (first rest_of_program) (rest rest_of_program) boxed_state master_return))))))
 
 ;Takes an expression, a state in a box, and the continuations for return, break, continue, throw, and block handling,
 ;and updates the state in the box to the state after the input expression has been evaluated.
@@ -46,18 +40,18 @@
     (cond
       ((atom? expr) )
       ((null? expr) )
-      ((eq? (first expr) 'var) (declare_box (first_of_rest expr) (rest_of_rest expr) boxed_state master_return))
-      ((eq? (first expr) '=) (assign (first_of_rest expr) (first_of_rest_of_rest expr) state master_return))
-      ((eq? (first expr) 'return) (return (M_value (first_of_rest expr) state master_return) state master_return))
+      ((eq? (first expr) 'var) (handle_declare (first_of_rest expr) (rest_of_rest expr) boxed_state master_return))
+      ((eq? (first expr) '=) (handle_assign (first_of_rest expr) (first_of_rest_of_rest expr) boxed_state master_return))
+      ((eq? (first expr) 'return) (return (M_value (first_of_rest expr) (unbox boxed_state) master_return) (unbox boxed_state) master_return))
       ((eq? (first expr) 'if) (if* (rest expr) state master_return))
       ((eq? (first expr) 'while) (while (first_of_rest expr) (first_of_rest_of_rest expr) state master_return))
-      ((eq? (first expr) 'begin) (begin_box boxed_state return break continue throw))
-      ((eq? (first expr) 'try) ())
-      ((eq? (first expr) 'throw) ())
-      ((eq? (first expr) 'catch) ())
-      ((eq? (first expr) 'finally) ())
-      ((eq? (first expr) 'break) ())
-      ((eq? (first expr) 'continue) ()))))
+      ((eq? (first expr) 'begin) (handle_begin expr boxed_state return break continue throw))
+      ((eq? (first expr) 'try) (handle_try expr boxed_state return break continue throw))
+      ((eq? (first expr) 'throw) (handle_throw expr boxed_state return break continue throw))
+      ((eq? (first expr) 'catch) (handle_catch expr boxed_state return break continue throw))
+      ((eq? (first expr) 'finally) (handle_finally expr boxed_state return break continue throw))
+      ((eq? (first expr) 'break) (handle_break expr boxed_state return break continue throw))
+      ((eq? (first expr) 'continue) (handle_continue expr boxed_state return break continue throw)))))
      
 ;Takes an expression, a state, and the continuation return and returns the value of the expression evaluated in the given state. The evaluated expressions in M_value use math operators (i.e. + _ * / %).
 ;to produce/declare/assign values. The expression may contain assignments.
@@ -321,7 +315,7 @@
 
 ;Takes a variable, a list containing a value, a state in a box, and the continuation return value and updates the state in the box to be
 ;the state where the variable has been declared in the top layer. If it is being declared but not initialized, use value ().
-(define declare_box
+(define handle_declare
   (lambda (var value boxed_state master_return)
     (let ([state (unbox boxed_state)])
       (cond
@@ -371,14 +365,6 @@
         ((in_layer var (first state)) (set-box! boxed_state (cons (first_of_rest (update_layer var value (first state))) (rest state))))
         (else (set-box! boxed_state (cons (first state) (update_state2 var value (rest state)))))))))
 
-;Takes a begin statement and returns a list of all of its expressions. THIS MAY NEED TO BE CHANGED.
-(define begin_handler
-  (lambda (l)
-    (cond
-      ((null? l) '())
-      ((eq? (car l) 'begin) (cdr l))
-      (else (error "Not a begin statement.")))))
-
 ;Takes a variable, an expression, a state, and the continuation return value and returns the state where the variable is assigned to the value
 ;of the expression if the variable is declared. Otherwise creates an error.
 (define assign
@@ -387,9 +373,9 @@
 
 ;Takes a variable, an expression, a state in a box, and the continuation return and updates the boxed state to the state where the variable is assigned to the value
 ;of the expression if the variable is declared. Otherwise creates an error.
-(define assign_box
+(define handle_assign
   (lambda (var expr boxed_state master_return)
-    (update_box 
+    (update_box var (M_value expr (unbox boxed_state) master_return) boxed_state)))
 
 ;Takes an expression, a state, and the current continuation return value. The method then returns the value of the expression in the state. Once return is called, the program
 ;terminates, as the final value of the continuation return has been found.

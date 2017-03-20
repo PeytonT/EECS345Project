@@ -1,1 +1,7 @@
-var x; var y = (x = 5) + (x = 6); return y * 100 + x;
+var x = 0;
+while (x < 10) {
+  x = x - 1;
+  break;
+  x = x + 100;
+}
+return x;
