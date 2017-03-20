@@ -78,6 +78,11 @@
   (lambda ()
     '(() ())))
 
+;Creates an empty program state in a box
+(define empty_state_box
+  (lambda ()
+    (box '((() ())))))
+
 ;Creates an empty program state in the layers form
 (define empty-state2
   (lambda ()
@@ -87,6 +92,11 @@
 (define new_block
   (lambda (state)
     (cons (first (empty-state2)) state)))
+
+;Takes a state in a box and adds an empty layer to the top of the state
+(define new_block_box
+  (lambda (state)
+    (set-box! state (cons (first (empty-state2)) (unbox state)))))
 
 ;Tells us if the expression is a math operation
 (define is_math_op?
@@ -263,6 +273,16 @@
       ((first (get-var-value-layer var (first state))) (first-of-rest (get-var-value-layer var (first state))))
       (else (get-var-value2 var (rest state))))))
 
+;Gets the value of a variable possibly stored in a layer of a state stored in a box. Returns (boolean value), where boolean is true and value is the var's value if the var was present
+;and boolean is false otherwise
+(define get_var_value_box
+  (lambda (var boxed_state)
+    (let ([state (unbox boxed_state)])
+     (cond
+      ((null? state) (error "Attempting to use an undeclared variable."))
+      ((first (get-var-value-layer var (first state))) (first-of-rest (get-var-value-layer var (first state))))
+      (else (get-var-value2 var (rest state)))))))
+
 ;Takes a variable, a list containing a value, a state, and the continuation return value and
 ;returns the state where the variable has been declared. If it is being declared but not initialized, use value ().
 (define declare
@@ -279,6 +299,15 @@
     (cond
       ((null? value) (cons (newfirsts var value (first state)) (rest state)))
       (else (cons (newfirsts var (M_value value state master_return) (first state)) (rest state))))))
+
+;Takes a variable, a list containing a value, a state in a box, and the continuation return value and updates the state in the box to be
+;the state where the variable has been declared in the top layer. If it is being declared but not initialized, use value ().
+(define declare_box
+  (lambda (var value boxed_state master_return)
+    (let ([state (unbox boxed_state)])
+      (cond
+        ((null? value) (set-box! boxed_state (cons (newfirsts var value (first state)) (rest state))))
+        (else (set-box! boxed_state (cons (newfirsts var (M_value value state master_return) (first state)) (rest state))))))))
 
 ;Takes a variable, a value, and a state and sets the value of that variable in the state to be the given value. If the variable is not in the state an error is thrown.
 (define update_state
@@ -313,6 +342,15 @@
       ((null? state) (error "Variable is being assigned before it has been declared."))
       ((in_layer var (first state)) (cons (first-of-rest (update_layer var value (first state))) (rest state)))
       (else (cons (first state) (update_state2 var value (rest state)))))))
+
+;Takes a variable, a value, and a state in a box and sets the value of that variable in the state in that box to be the given value. Works on layered states.
+(define update_box
+  (lambda (var value boxed_state)
+    (let ([state (unbox boxed_state)])
+      (cond
+        ((null? state) (error "Variable is being assigned before it has been declared."))
+        ((in_layer var (first state)) (set-box! boxed_state (cons (first-of-rest (update_layer var value (first state))) (rest state))))
+        (else (set-box! boxed_state (cons (first state) (update_state2 var value (rest state)))))))))
 
 ;Takes a variable, an expression, a state, and the continuation return value and returns the state where the variable is assigned to the value
 ;of the expression if the variable is declared. Otherwise creates an error.
