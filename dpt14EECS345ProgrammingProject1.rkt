@@ -13,17 +13,17 @@
 ;Once return has been called throughout the evaluation of the parse tree, call/cc will automatically take the continuation return value and output it into the interactions pane.
 (define interpret
   (lambda (filename)
-    (call/cc (lambda (return-from-interpret) ((evaluate (first (parser filename)) (rest (parser filename)) (empty-state) return-from-interpret))))))
+    (call/cc (lambda (return_from_interpret) ((evaluate (first (parser filename)) (rest (parser filename)) (empty_state) return_from_interpret))))))
 
 ;Takes the first expression, the rest of the parse tree, a state, and the continuation return. If the first expression is null, an error is thrown, as a program cannot not have a return statement.
 ;If the rest of the program is null, then the first expression is passed on to M_State to be evaluated further. Otherwise, the function calls M_State on the first expression and recursively calls M_State
-;on the rest of the expressions in rest-of-program.
+;on the rest of the expressions in rest_of_program.
 (define evaluate
-  (lambda (first-line rest-of-program state master_return)
+  (lambda (first_line rest_of_program state master_return)
     (cond
-      ((null? first-line) (error "Program Completed Without A Return Statement"))
-      ((null? rest-of-program) (evaluate () () (M_state first-line state master_return) master_return))
-      ((evaluate (first rest-of-program) (rest rest-of-program) (M_state first-line state master_return) master_return)))))
+      ((null? first_line) (error "Program Completed Without A Return Statement"))
+      ((null? rest_of_program) (evaluate () () (M_state first_line state master_return) master_return))
+      ((evaluate (first rest_of_program) (rest rest_of_program) (M_state first_line state master_return) master_return)))))
 
 ;Takes an expression, a state, and the continuation return and returns the state after the inputted expression has been evaluated in said state. The expression can relate to
 ;variable declaration, variable assignments, returning values, if statements and while loops.
@@ -32,23 +32,23 @@
    (cond
       ((atom? expr) state)
       ((null? expr) state)
-      ((eq? (first expr) 'var) (declare (first-of-rest expr) (rest-of-rest expr) state master_return))
-      ((eq? (first expr) '=) (assign (first-of-rest expr) (first-of-rest-of-rest expr) state master_return))
-      ((eq? (first expr) 'return) (return (M_value (first-of-rest expr) state master_return) state master_return))
+      ((eq? (first expr) 'var) (declare (first_of_rest expr) (rest_of_rest expr) state master_return))
+      ((eq? (first expr) '=) (assign (first_of_rest expr) (first_of_rest_of_rest expr) state master_return))
+      ((eq? (first expr) 'return) (return (M_value (first_of_rest expr) state master_return) state master_return))
       ((eq? (first expr) 'if) (if* (rest expr) state master_return))
-      ((eq? (first expr) 'while) (while (first-of-rest expr) (first-of-rest-of-rest expr) state master_return))
+      ((eq? (first expr) 'while) (while (first_of_rest expr) (first_of_rest_of_rest expr) state master_return))
       (else state))))
      
 
-;Takes an expression, a state, and the continuation return and returns the value of the expression evaluated in the given state. The evaluated expressions in M_value use math operators (i.e. + - * / %).
+;Takes an expression, a state, and the continuation return and returns the value of the expression evaluated in the given state. The evaluated expressions in M_value use math operators (i.e. + _ * / %).
 ;to produce/declare/assign values. The expression may contain assignments.
 (define M_value
   (lambda (expr state master_return)
     (cond
-      ((atom? expr) (if (number? expr) expr (if (or (equal? expr 'true) (equal? expr 'false)) (if (equal? expr 'true) #t #f) (get-var-value expr state))))
-      ((and (unary? expr) (eq? (first expr) '-)) (* -1 (M_value (first-of-rest expr) state master_return)))
-      ((eq? (first expr) '=) (M_value (first-of-rest-of-rest expr) state master_return))
-      ((is_math_op? expr) ((get_math_op expr) (M_value (first-of-rest expr) state master_return) (M_value (first-of-rest-of-rest expr) (M_state (first-of-rest expr) state master_return) master_return)))
+      ((atom? expr) (if (number? expr) expr (if (or (equal? expr 'true) (equal? expr 'false)) (if (equal? expr 'true) #t #f) (get_var_value expr state))))
+      ((and (unary? expr) (eq? (first expr) '-)) (* -1 (M_value (first_of_rest expr) state master_return)))
+      ((eq? (first expr) '=) (M_value (first_of_rest_of_rest expr) state master_return))
+      ((is_math_op? expr) ((get_math_op expr) (M_value (first_of_rest expr) state master_return) (M_value (first_of_rest_of_rest expr) (M_state (first_of_rest expr) state master_return) master_return)))
       ((is_bool_op? expr) (M_boolean expr state master_return))
       (else (error "You somehow called M_value on something without a value.")))))
 
@@ -58,9 +58,9 @@
   (lambda (expr state master_return)
     (cond
       ((atom? expr) (if (or (equal? expr 'true) (equal? expr 'false)) (if (equal? expr 'true) #t #f) expr))
-      ((and (unary? expr) (eq? (first expr) '!)) (not (M_boolean (first-of-rest expr) state master_return)))
-      ((eq? (first expr) '=) (M_boolean (first-of-rest-of-rest expr) state master_return))
-      ((is_bool_op? expr) ((get_bool_op expr) (M_value (first-of-rest expr) state master_return) (M_value (first-of-rest-of-rest expr) (M_state (first-of-rest expr) state master_return) master_return)))
+      ((and (unary? expr) (eq? (first expr) '!)) (not (M_boolean (first_of_rest expr) state master_return)))
+      ((eq? (first expr) '=) (M_boolean (first_of_rest_of_rest expr) state master_return))
+      ((is_bool_op? expr) ((get_bool_op expr) (M_value (first_of_rest expr) state master_return) (M_value (first_of_rest_of_rest expr) (M_state (first_of_rest expr) state master_return) master_return)))
       (else (error "You somehow called M_boolean on something without a boolean value.")))))
 
 ;Checks if an object is an atom. Returns true if so.
@@ -71,10 +71,10 @@
 ;Checks if an expression is unary. Returns true if so.
 (define unary?
   (lambda (expr)
-    (eq? (rest-of-rest expr) ())))
+    (eq? (rest_of_rest expr) ())))
     
 ;Creates an empty program state
-(define empty-state
+(define empty_state
   (lambda ()
     '(() ())))
 
@@ -84,19 +84,19 @@
     (box '((() ())))))
 
 ;Creates an empty program state in the layers form
-(define empty-state2
+(define empty_state2
   (lambda ()
     '((() ()))))
 
 ;Adds an empty layer to the top of the current state
 (define new_block
   (lambda (state)
-    (cons (first (empty-state2)) state)))
+    (cons (first (empty_state2)) state)))
 
 ;Takes a state in a box and adds an empty layer to the top of the state
 (define new_block_box
   (lambda (state)
-    (set-box! state (cons (first (empty-state2)) (unbox state)))))
+    (set-box! state (cons (first (empty_state2)) (unbox state)))))
 
 ;Tells us if the expression is a math operation
 (define is_math_op?
@@ -232,17 +232,17 @@
 ;Takes three inputs: two values and a list. Adds new first elements to a list of two lists.
 (define newfirsts
   (lambda (f1 f2 l)
-    (encapsulate (cons f1 (first l)) (cons f2 (first-of-rest l)))))
+    (encapsulate (cons f1 (first l)) (cons f2 (first_of_rest l)))))
 
 ;Takes an input list of two lists and returns a list of the first two elements of those lists
 (define getfirsts
   (lambda (l)
-    (cons (first-of-first l) (cons (first-of-first-of-rest l) ()))))
+    (cons (first_of_first l) (cons (first_of_first_of_rest l) ()))))
 
 ;Removes the first elements of the sublists of a list. Said list is comprised of two lists.
 (define removefirsts
   (lambda (l)
-    (encapsulate (rest-of-first l) (rest-of-first-of-rest l))))
+    (encapsulate (rest_of_first l) (rest_of_first_of_rest l))))
 
 ;Takes two inputs and makes them the first two values in the lists in an input list of two lists.
 (define replacefirsts
@@ -250,28 +250,28 @@
    (newfirsts f1 f2 (removefirsts l))))
 
 ;Gets the value of a given variable in a given state, or errors if no such variable exists.
-(define get-var-value
+(define get_var_value
   (lambda (var state)
     (cond
       ((null? (first state)) (error "Attempted to use an undeclared variable."))
-      ((eq? var (first-of-first state)) (if (not (null? (first-of-first-of-rest state))) (first-of-first-of-rest state) (error "Attempting to use unassigned variable.")))
-      (else (get-var-value var (removefirsts state))))))
+      ((eq? var (first_of_first state)) (if (not (null? (first_of_first_of_rest state))) (first_of_first_of_rest state) (error "Attempting to use unassigned variable.")))
+      (else (get_var_value var (removefirsts state))))))
 
 ;Gets the value of a variable possibly stored in a layer. Returns (boolean value), where boolean is true and value is the var's value if the var was present, and boolean is false otherwise
-(define get-var-value-layer
+(define get_var_value_layer
   (lambda (var layer)
     (cond
       ((null? (first layer)) (cons #f '(())))
-      ((eq? var (first-of-first layer)) (if (not (null? (first-of-first-of-rest layer))) (cons #t (cons (first-of-first-of-rest layer) '())) (error "Attempting to use unassigned variable.")))
-      (else (get-var-value-layer var (removefirsts layer))))))
+      ((eq? var (first_of_first layer)) (if (not (null? (first_of_first_of_rest layer))) (cons #t (cons (first_of_first_of_rest layer) '())) (error "Attempting to use unassigned variable.")))
+      (else (get_var_value_layer var (removefirsts layer))))))
 
 ;Gets the value of a given varable in a given layer state, or errors if no such variable exists.
-(define get-var-value2
+(define get_var_value2
   (lambda (var state)
     (cond
       ((null? state) (error "Attempting to use an undeclared variable."))
-      ((first (get-var-value-layer var (first state))) (first-of-rest (get-var-value-layer var (first state))))
-      (else (get-var-value2 var (rest state))))))
+      ((first (get_var_value_layer var (first state))) (first_of_rest (get_var_value_layer var (first state))))
+      (else (get_var_value2 var (rest state))))))
 
 ;Gets the value of a variable possibly stored in a layer of a state stored in a box. Returns (boolean value), where boolean is true and value is the var's value if the var was present
 ;and boolean is false otherwise
@@ -280,8 +280,8 @@
     (let ([state (unbox boxed_state)])
      (cond
       ((null? state) (error "Attempting to use an undeclared variable."))
-      ((first (get-var-value-layer var (first state))) (first-of-rest (get-var-value-layer var (first state))))
-      (else (get-var-value2 var (rest state)))))))
+      ((first (get_var_value_layer var (first state))) (first_of_rest (get_var_value_layer var (first state))))
+      (else (get_var_value2 var (rest state)))))))
 
 ;Takes a variable, a list containing a value, a state, and the continuation return value and
 ;returns the state where the variable has been declared. If it is being declared but not initialized, use value ().
@@ -314,8 +314,8 @@
   (lambda (var value state)
     (cond
       ((null? (first state)) (error "Variable is being assigned before it has been declared."))
-      ((equal? var (first-of-first state)) (replacefirsts var value state))
-      (else (newfirsts (first-of-first state) (first-of-first-of-rest state) (update_state var value (removefirsts state)))))))
+      ((equal? var (first_of_first state)) (replacefirsts var value state))
+      (else (newfirsts (first_of_first state) (first_of_first_of_rest state) (update_state var value (removefirsts state)))))))
 
 ;Takes a variable, a value, and a layer of a state and sets the value of that variable in the state to be the given value if it is present.
 ;Returns (#t updated_layer) if the value was present, and (#f layer) otherwise.
@@ -323,16 +323,16 @@
   (lambda (var value layer)
     (cond
       ((null? (first layer)) (cons #f (cons layer ())))
-      ((eq? var (first-of-first layer)) (cons #t (cons (replacefirsts var value layer) ())))
+      ((eq? var (first_of_first layer)) (cons #t (cons (replacefirsts var value layer) ())))
       (else (let ([result (update_layer var value (removefirsts layer))])
-              (cons (first result) (cons (newfirsts (first (getfirsts layer)) (first-of-rest (getfirsts layer)) (first-of-rest result)) ()))))))) ;What have I done? DPT
+              (cons (first result) (cons (newfirsts (first (getfirsts layer)) (first_of_rest (getfirsts layer)) (first_of_rest result)) ()))))))) ;What have I done? DPT
 
 ;Takes a variable and a layer and returns true if the variable is in the layer and false otherwise.
 (define in_layer
   (lambda (var layer)
     (cond
       ((null? (first layer)) #f)
-      ((eq? var (first-of-first layer)) #t)
+      ((eq? var (first_of_first layer)) #t)
       (else (in_layer var (removefirsts layer))))))
 
 ;Takes a variable, a value, and a state and sets the value of that variable in the state to be the given value. Works on layer states.
@@ -340,7 +340,7 @@
   (lambda (var value state)
     (cond
       ((null? state) (error "Variable is being assigned before it has been declared."))
-      ((in_layer var (first state)) (cons (first-of-rest (update_layer var value (first state))) (rest state)))
+      ((in_layer var (first state)) (cons (first_of_rest (update_layer var value (first state))) (rest state)))
       (else (cons (first state) (update_state2 var value (rest state)))))))
 
 ;Takes a variable, a value, and a state in a box and sets the value of that variable in the state in that box to be the given value. Works on layered states.
@@ -349,7 +349,7 @@
     (let ([state (unbox boxed_state)])
       (cond
         ((null? state) (error "Variable is being assigned before it has been declared."))
-        ((in_layer var (first state)) (set-box! boxed_state (cons (first-of-rest (update_layer var value (first state))) (rest state))))
+        ((in_layer var (first state)) (set-box! boxed_state (cons (first_of_rest (update_layer var value (first state))) (rest state))))
         (else (set-box! boxed_state (cons (first state) (update_state2 var value (rest state)))))))))
 
 ;Takes a variable, an expression, a state, and the continuation return value and returns the state where the variable is assigned to the value
@@ -374,8 +374,8 @@
 (define if*
   (lambda (expr state master_return)
     (cond
-      ((M_boolean (first expr) state master_return) (M_state (first-of-rest expr) (M_state (first expr) state master_return) master_return))
-      ((and (not (M_boolean (first expr) state master_return)) (not (eq? (rest-of-rest expr) ()))) (M_state (first-of-rest-of-rest expr) (M_state (first expr) state master_return) master_return))
+      ((M_boolean (first expr) state master_return) (M_state (first_of_rest expr) (M_state (first expr) state master_return) master_return))
+      ((and (not (M_boolean (first expr) state master_return)) (not (eq? (rest_of_rest expr) ()))) (M_state (first_of_rest_of_rest expr) (M_state (first expr) state master_return) master_return))
       (else (M_state (first expr) state master_return)))))
 
 ;Takes a condition, a loop body, a state, and the continuation return value.
@@ -391,61 +391,61 @@
 ;This section is for abstractions of the car/cdr functions. first and rest are already implemented by Pretty Big
 
 ;Functionality of caar
-(define first-of-first
+(define first_of_first
   (lambda (l)
     (caar l)))
 
 ;Functionality of cddr
-(define rest-of-rest
+(define rest_of_rest
   (lambda (l)
     (cddr l)))
 
 ;Functionality of cadr
-(define first-of-rest
+(define first_of_rest
   (lambda (l)
     (cadr l)))
 
 ;Functionality of cdar
-(define rest-of-first
+(define rest_of_first
   (lambda (l)
     (cdar l)))
 
 ;Functionality of caaar
-(define first-of-first-of-first
+(define first_of_first_of_first
   (lambda (l)
     (caaar l)))
 
 ;Functionality of caadr
-(define first-of-first-of-rest
+(define first_of_first_of_rest
   (lambda (l)
     (caadr l)))
 
 ;Functionality of cadar
-(define first-of-rest-of-first
+(define first_of_rest_of_first
   (lambda (l)
     (cadar l)))
 
 ;Functionality of caddr
-(define first-of-rest-of-rest
+(define first_of_rest_of_rest
   (lambda (l)
     (caddr l)))
 
 ;Functionality of cdaar
-(define rest-of-first-of-first
+(define rest_of_first_of_first
   (lambda (l)
     (cdaar l)))
 
 ;Functionality of cdadr
-(define rest-of-first-of-rest
+(define rest_of_first_of_rest
   (lambda (l)
     (cdadr l)))
 
 ;Functionality of cddar
-(define rest-of-rest-of-first
+(define rest_of_rest_of_first
   (lambda (l)
     (cddar l)))
 
 ;Functionality of cdddr
-(define rest-of-rest-of-rest
+(define rest_of_rest_of_rest
   (lambda (l)
     (cdddr l)))
