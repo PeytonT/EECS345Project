@@ -22,12 +22,12 @@
   (lambda (first_line rest_of_program boxed_state master_return)
     (cond
       ((null? first_line) (error "Program Completed Without A Return Statement"))
-      ((null? rest_of_program) (M_state_box first_line boxed_state master_return
+      ((null? rest_of_program) (M_state first_line boxed_state master_return
                                  (lambda (x) (error "Called break outside of a loop"))
                                  (lambda (y) (error "Called continue outside of a loop"))
                                  (lambda (z) (error "Threw an exception outside of a try block"))))
       (else (begin
-              (M_state_box first_line boxed_state master_return
+              (M_state first_line boxed_state master_return
                            (lambda (x) (error "Called break outside of a loop"))
                            (lambda (y) (error "Called continue outside of a loop"))
                            (lambda (z) (error "Threw an exception outside of a try block")))
@@ -35,7 +35,7 @@
 
 ;Takes an expression, a state in a box, and the continuations for return, break, continue, throw, and block handling,
 ;and updates the state in the box to the state after the input expression has been evaluated.
-(define M_state_box
+(define M_state
   (lambda (expr boxed_state master_return break continue throw)
     (cond
       ((atom? expr) )
@@ -65,7 +65,7 @@
       ((atom? expr) (if (number? expr) expr (if (or (equal? expr 'true) (equal? expr 'false)) (if (equal? expr 'true) #t #f) (get_var_value_box expr boxed_state))))
       ((and (unary? expr) (eq? (first expr) '-)) (* -1 (M_value (first_of_rest expr) boxed_state master_return break continue throw)))
       ((eq? (first expr) '=) (begin
-                               (M_state_box expr boxed_state master_return break continue throw)
+                               (M_state expr boxed_state master_return break continue throw)
                                (M_value (first_of_rest_of_rest expr) boxed_state master_return break continue throw)))
       ((is_math_op? expr) ((get_math_op expr)
                            (M_value (first_of_rest expr) boxed_state master_return break continue throw)
@@ -95,11 +95,6 @@
 (define unary?
   (lambda (expr)
     (eq? (rest_of_rest expr) '())))
-    
-;Creates an empty program state
-(define empty_state
-  (lambda ()
-    '(() ())))
 
 ;Creates an empty program state in a box
 (define empty_state_box
@@ -107,18 +102,18 @@
     (box '((() ())))))
 
 ;Creates an empty program state in the layers form
-(define empty_state2
+(define empty_state
   (lambda ()
     '((() ()))))
 
 ;Adds an empty layer to the top of the current state
 (define new_block
   (lambda (state)
-    (cons (first (empty_state2)) state)))
+    (cons (first (empty_state)) state)))
 
 ;Takes a state in a box and adds an empty layer to the top of the state
 (define new_block_box
-  (lambda (state) (set-box! state (cons (first (empty_state2)) (unbox state)))))
+  (lambda (state) (set-box! state (cons (first (empty_state)) (unbox state)))))
 
 ;Takes a boxed state and removes the top layer of said state, if it exists.
 (define remove_top_layer
@@ -304,23 +299,6 @@
       ((first (get_var_value_layer var (first state))) (first_of_rest (get_var_value_layer var (first state))))
       (else (get_var_value var (rest state)))))))
 
-;Takes a variable, a list containing a value, a state, and the continuation return value and
-;returns the state where the variable has been declared. If it is being declared but not initialized, use value ().
-(define declare
-  (lambda (var value state master_return)
-    (cond
-      ((null? value) (newfirsts var value state))
-      ;What's going on with calling M_value on (first value). Shouldn't it just be called on value? I wrote this and I am confused. DPT
-      (else (newfirsts var (M_value (first value) state master_return) state)))))
-
-;Takes a variable, a list containing a value, a state, and the continuation return value and returns the state where
-;the variable has been declared in the top layer. If it is being declared but not initialized, use value ().
-(define declare2
-  (lambda (var value state master_return)
-    (cond
-      ((null? value) (cons (newfirsts var value (first state)) (rest state)))
-      (else (cons (newfirsts var (M_value value state master_return) (first state)) (rest state))))))
-
 ;Takes a variable, a list containing a value, a state in a box, and the continuation return value and updates the state in the box to be
 ;the state where the variable has been declared in the top layer. If it is being declared but not initialized, use value ().
 (define handle_declare
@@ -373,12 +351,6 @@
         ((in_layer var (first state)) (set-box! boxed_state (cons (first_of_rest (update_layer var value (first state))) (rest state))))
         (else (set-box! boxed_state (cons (first state) (update_state2 var value (rest state)))))))))
 
-;Takes a variable, an expression, a state, and the continuation return value and returns the state where the variable is assigned to the value
-;of the expression if the variable is declared. Otherwise creates an error.
-(define assign
-  (lambda (var expr state master_return)
-    (update_state var (M_value expr state master_return) (M_state expr state master_return))))
-
 ;Takes a variable, an expression, a state in a box, and the continuation return and updates the boxed state to the state where the variable is assigned to the value
 ;of the expression if the variable is declared. Otherwise creates an error.
 (define handle_assign
@@ -400,8 +372,8 @@
   (lambda (expr boxed_state master_return break continue throw)
     (letrec ([truth (M_boolean (first expr) boxed_state master_return break continue throw)])
       (cond
-        ((eq? truth #t) (M_state_box (first_of_rest expr) boxed_state master_return break continue throw))
-        ((and (eq? truth #f) (not (eq? (rest_of_rest expr) '()))) (M_state_box (first_of_rest_of_rest expr) boxed_state master_return break continue throw))))))
+        ((eq? truth #t) (M_state (first_of_rest expr) boxed_state master_return break continue throw))
+        ((and (eq? truth #f) (not (eq? (rest_of_rest expr) '()))) (M_state (first_of_rest_of_rest expr) boxed_state master_return break continue throw))))))
 
 ;Takes a condition, a loop body, a boxed state, and the M_state conditions.
 ;If the condition is true in the state, it recursively calls itself on the condition, the loop body, the continuations,
@@ -410,7 +382,7 @@
   (lambda (condition loop boxed_state master_return break continue throw)
     (letrec ([truth (M_boolean condition boxed_state master_return break continue throw)])
       (cond
-        ((eq? truth #t) (begin (call/cc (lambda (k) (M_state_box loop boxed_state master_return break k throw))) (while condition loop boxed_state master_return break continue throw)))))))
+        ((eq? truth #t) (begin (call/cc (lambda (k) (M_state loop boxed_state master_return break k throw))) (while condition loop boxed_state master_return break continue throw)))))))
 
 ;Takes a block expression, a boxed state, master return, break, continue and throw, and processes said block statement in the boxed state.
 (define handle_begin
@@ -424,7 +396,7 @@
     (cond
       ((null? (rest expr)))
       (else
-        (M_state_box (first_of_rest expr) boxed_state master_return break continue throw)
+        (M_state (first_of_rest expr) boxed_state master_return break continue throw)
         (begin_helper (rest expr) boxed_state master_return break continue throw)))))
 
 ;Takes an expression in the form of a try statement and the M_state continuations and calls M_state on the body of the try block.
@@ -434,21 +406,22 @@
   (lambda (expr boxed_state master_return break continue throw)
     (letrec ([result (call/cc (lambda (k) (try_helper (first_of_rest expr) boxed_state master_return break continue k)))])
       (cond
-        ((eq? result (void)) (M_state_box (first (rest_of_rest_of_rest expr)) boxed_state master_return break continue throw))
+        ((eq? result (void)) (M_state (first (rest_of_rest_of_rest expr)) boxed_state master_return break continue throw))
         (else
          ;I have made the implementation decision that exceptions are declared as variables.
          ;Giving an exception a name that a variable already has will produce an error.
          ;In principle a user could access an exception outside of the catch block in which it was created.
          (handle_declare (first_of_first_of_rest (first_of_rest_of_rest expr)) result boxed_state master_return break continue throw)
-         (M_state_box (first_of_rest_of_rest expr) boxed_state master_return break continue throw)
-         (M_state_box (first (rest_of_rest_of_rest expr)) boxed_state master_return break continue throw))))))
+         (M_state (first_of_rest_of_rest expr) boxed_state master_return break continue throw)
+         (M_state (first (rest_of_rest_of_rest expr)) boxed_state master_return break continue throw))))))
 
+;Recursively calls M_state on the first entry of the input expression until it has exhausted the list
 (define try_helper
   (lambda (expr boxed_state master_return break continue throw)
     (cond
       ((null? expr) (void))
       (else
-       (M_state_box (first expr) boxed_state master_return break continue throw)
+       (M_state (first expr) boxed_state master_return break continue throw)
        (try_helper (rest expr) boxed_state master_return break continue throw)))))
 
 ;Takes an expression in the form of a catch statement and the M_state continuations and calls M_state on the body of the catch block.
@@ -458,12 +431,13 @@
       ((null? expr) (void))
       (else (catch_helper (first_of_rest_of_rest expr) boxed_state master_return break continue throw)))))
 
+;Recursively calls M_state on the first entry of the input expression until it has exhausted the list
 (define catch_helper
   (lambda (expr boxed_state master_return break continue throw)
     (cond
       ((null? expr) (void))
       (else
-       (M_state_box (first expr) boxed_state master_return break continue throw)
+       (M_state (first expr) boxed_state master_return break continue throw)
        (catch_helper (rest expr) boxed_state master_return break continue throw)))))
 
 ;Takes an expression in the form of a finally statement and the M_state continuations and calls M_state on the body of the finally block.
@@ -473,14 +447,16 @@
       ((null? expr) )
       (else (finally_helper (first_of_rest expr) boxed_state master_return break continue throw)))))
 
+;Recursively calls M_state on the first entry of the input expression until it has exhausted the list
 (define finally_helper
   (lambda (expr boxed_state master_return break continue throw)
     (cond
       ((null? expr) )
       (else
-       (M_state_box (first expr) boxed_state master_return break continue throw)
+       (M_state (first expr) boxed_state master_return break continue throw)
        (finally_helper (rest expr) boxed_state master_return break continue throw)))))
 
+;Takes an expression and the M_state continuations and passes the value of the expression to the throw continuation
 (define handle_throw
   (lambda (expr boxed_state master_return break continue throw)
     (throw (M_value (first_of_rest expr) boxed_state master_return break continue throw))))
