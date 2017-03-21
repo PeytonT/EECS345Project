@@ -42,7 +42,7 @@
       ((null? expr) )
       ;Handles the two possibilities of variable declaration, either assigning an empty list if now value is given, or the given value if a value is given.
       ((eq? (first expr) 'var) (if (null? (rest_of_rest expr))
-                                   (handle_declare (first_of_rest expr) () boxed_state master_return break continue throw)
+                                   (handle_declare (first_of_rest expr) '() boxed_state master_return break continue throw)
                                    (handle_declare (first_of_rest expr) (first_of_rest_of_rest expr) boxed_state master_return break continue throw)))
       ((eq? (first expr) '=) (handle_assign (first_of_rest expr) (first_of_rest_of_rest expr) boxed_state master_return break continue throw))
       ((eq? (first expr) 'return) (return (M_value (first_of_rest expr) boxed_state master_return break continue throw) master_return))
@@ -94,7 +94,7 @@
 ;Checks if an expression is unary. Returns true if so.
 (define unary?
   (lambda (expr)
-    (eq? (rest_of_rest expr) ())))
+    (eq? (rest_of_rest expr) '())))
     
 ;Creates an empty program state
 (define empty_state
@@ -256,7 +256,7 @@
 ;Takes two lists l1 and l2 and returns (l1 l2)
 (define encapsulate
   (lambda (l1 l2)
-    (cons l1 (cons l2 ()))))
+    (cons l1 (cons l2 '()))))
 
 ;Takes three inputs: two values and a list. Adds new first elements to a list of two lists.
 (define newfirsts
@@ -266,7 +266,7 @@
 ;Takes an input list of two lists and returns a list of the first two elements of those lists
 (define getfirsts
   (lambda (l)
-    (cons (first_of_first l) (cons (first_of_first_of_rest l) ()))))
+    (cons (first_of_first l) (cons (first_of_first_of_rest l) '()))))
 
 ;Removes the first elements of the sublists of a list. Said list is comprised of two lists.
 (define removefirsts
@@ -343,10 +343,10 @@
 (define update_layer
   (lambda (var value layer)
     (cond
-      ((null? (first layer)) (cons #f (cons layer ())))
-      ((eq? var (first_of_first layer)) (cons #t (cons (replacefirsts var value layer) ())))
+      ((null? (first layer)) (cons #f (cons layer '())))
+      ((eq? var (first_of_first layer)) (cons #t (cons (replacefirsts var value layer) '())))
       (else (let ([result (update_layer var value (removefirsts layer))])
-              (cons (first result) (cons (newfirsts (first (getfirsts layer)) (first_of_rest (getfirsts layer)) (first_of_rest result)) ()))))))) ;What have I done? DPT
+              (cons (first result) (cons (newfirsts (first (getfirsts layer)) (first_of_rest (getfirsts layer)) (first_of_rest result)) '()))))))) ;What have I done? DPT
 
 ;Takes a variable and a layer and returns true if the variable is in the layer and false otherwise.
 (define in_layer
@@ -401,7 +401,7 @@
     (letrec ([truth (M_boolean (first expr) boxed_state master_return break continue throw)])
       (cond
         ((eq? truth #t) (M_state_box (first_of_rest expr) boxed_state master_return break continue throw))
-        ((and (eq? truth #f) (not (eq? (rest_of_rest expr) ()))) (M_state_box (first_of_rest_of_rest expr) boxed_state master_return break continue throw))))))
+        ((and (eq? truth #f) (not (eq? (rest_of_rest expr) '()))) (M_state_box (first_of_rest_of_rest expr) boxed_state master_return break continue throw))))))
 
 ;Takes a condition, a loop body, a boxed state, and the M_state conditions.
 ;If the condition is true in the state, it recursively calls itself on the condition, the loop body, the continuations,
