@@ -48,21 +48,20 @@
       ((eq? (first expr) 'return) (return (M_value (first_of_rest expr) boxed_state master_return break continue throw) master_return))
       ((eq? (first expr) 'if) (if* (rest expr) boxed_state master_return break continue throw))
       ((eq? (first expr) 'while) (call/cc (lambda (k) (while (first_of_rest expr) (first_of_rest_of_rest expr) boxed_state master_return k continue throw))))
-      
+      ((eq? (first expr) 'break) (break (remove_top_layer boxed_state)))
+      ((eq? (first expr) 'continue) (continue (remove_top_layer boxed_state)))
       ((eq? (first expr) 'begin) (handle_begin expr boxed_state master_return break continue throw))
-
       ((eq? (first expr) 'try) (handle_try expr boxed_state master_return break continue throw))
       ((eq? (first expr) 'throw) (handle_throw expr boxed_state master_return break continue throw))
       ((eq? (first expr) 'catch) (handle_catch expr boxed_state master_return break continue throw))
-      ((eq? (first expr) 'finally) (handle_finally expr boxed_state master_return break continue throw))
-      ((eq? (first expr) 'break) (break (remove_top_layer boxed_state)))
-      ((eq? (first expr) 'continue) (continue (remove_top_layer boxed_state))))))
+      ((eq? (first expr) 'finally) (handle_finally expr boxed_state master_return break continue throw)))))
      
 ;Takes an expression, a state, and the continuation return and returns the value of the expression evaluated in the given state.
 ;The evaluated expressions in M_value use math operators (i.e. + _ * / %) to produce/declare/assign values. The expression may contain assignments.
 (define M_value
   (lambda (expr boxed_state master_return break continue throw)
     (cond
+      ((is_boolean? expr) expr)
       ((atom? expr) (if (number? expr) expr (if (or (equal? expr 'true) (equal? expr 'false)) (if (equal? expr 'true) #t #f) (get_var_value_box expr boxed_state))))
       ((and (unary? expr) (eq? (first expr) '-)) (* -1 (M_value (first_of_rest expr) boxed_state master_return break continue throw)))
       ((eq? (first expr) '=) (begin
@@ -79,6 +78,7 @@
 (define M_boolean
   (lambda (expr boxed_state master_return break continue throw)
     (cond
+      ((is_boolean? expr) expr)
       ((atom? expr) (if (or (equal? expr 'true) (equal? expr 'false)) (if (equal? expr 'true) #t #f) (get_var_value_box expr boxed_state)))
       ((and (unary? expr) (eq? (first expr) '!)) (not (M_boolean (first_of_rest expr) boxed_state master_return break continue throw)))
       ((eq? (first expr) '=) (M_boolean (first_of_rest_of_rest expr) boxed_state master_return break continue throw))
@@ -427,22 +427,63 @@
         (M_state_box (first_of_rest expr) boxed_state master_return break continue throw)
         (begin_helper (rest expr) boxed_state master_return break continue throw)))))
 
-;Skeleton code for other helper methods:
+;Takes an expression in the form of a try statement and the M_state continuations and calls M_state on the body of the try block.
+;Catches exceptions raised and stores them as a variable, then calls M_state on the catch and finally blocks.
+;If no exception is raised, calls M_state on the finally block.
 (define handle_try
   (lambda (expr boxed_state master_return break continue throw)
-    (cond
-      ((null? expr) ))))
+    (letrec ([result (call/cc (lambda (k) (try_helper (first_of_rest expr) boxed_state master_return break continue k)))])
+      (cond
+        ((eq? result (void)) (M_state_box (first (rest_of_rest_of_rest expr)) boxed_state master_return break continue throw))
+        (else
+         ;I have made the implementation decision that exceptions are declared as variables.
+         ;Giving an exception a name that a variable already has will produce an error.
+         ;In principle a user could access an exception outside of the catch block in which it was created.
+         (handle_declare (first_of_first_of_rest (first_of_rest_of_rest expr)) result boxed_state master_return break continue throw)
+         (M_state_box (first_of_rest_of_rest expr) boxed_state master_return break continue throw)
+         (M_state_box (first (rest_of_rest_of_rest expr)) boxed_state master_return break continue throw))))))
 
+(define try_helper
+  (lambda (expr boxed_state master_return break continue throw)
+    (cond
+      ((null? expr) (void))
+      (else
+       (M_state_box (first expr) boxed_state master_return break continue throw)
+       (try_helper (rest expr) boxed_state master_return break continue throw)))))
+
+;Takes an expression in the form of a catch statement and the M_state continuations and calls M_state on the body of the catch block.
 (define handle_catch
   (lambda (expr boxed_state master_return break continue throw)
     (cond
-      ((null? expr) ))))
+      ((null? expr) (void))
+      (else (catch_helper (first_of_rest_of_rest expr) boxed_state master_return break continue throw)))))
 
+(define catch_helper
+  (lambda (expr boxed_state master_return break continue throw)
+    (cond
+      ((null? expr) (void))
+      (else
+       (M_state_box (first expr) boxed_state master_return break continue throw)
+       (catch_helper (rest expr) boxed_state master_return break continue throw)))))
+
+;Takes an expression in the form of a finally statement and the M_state continuations and calls M_state on the body of the finally block.
 (define handle_finally
   (lambda (expr boxed_state master_return break continue throw)
     (cond
-      ((null? expr) ))))
-;end of skeleton code.
+      ((null? expr) )
+      (else (finally_helper (first_of_rest expr) boxed_state master_return break continue throw)))))
+
+(define finally_helper
+  (lambda (expr boxed_state master_return break continue throw)
+    (cond
+      ((null? expr) )
+      (else
+       (M_state_box (first expr) boxed_state master_return break continue throw)
+       (finally_helper (rest expr) boxed_state master_return break continue throw)))))
+
+(define handle_throw
+  (lambda (expr boxed_state master_return break continue throw)
+    (throw (M_value (first_of_rest expr) boxed_state master_return break continue throw))))
 
 ;This section is for abstractions of the car/cdr functions. first and rest are already implemented by Pretty Big
 
