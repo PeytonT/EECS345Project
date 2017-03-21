@@ -50,6 +50,7 @@
       ((eq? (first expr) 'while) (call/cc (lambda (k) (while (first_of_rest expr) (first_of_rest_of_rest expr) boxed_state master_return k continue throw))))
       
       ((eq? (first expr) 'begin) (handle_begin expr boxed_state master_return break continue throw))
+
       ((eq? (first expr) 'try) (handle_try expr boxed_state master_return break continue throw))
       ((eq? (first expr) 'throw) (handle_throw expr boxed_state master_return break continue throw))
       ((eq? (first expr) 'catch) (handle_catch expr boxed_state master_return break continue throw))
@@ -415,16 +416,17 @@
 ;Takes a block expression, a boxed state, master return, break, continue and throw, and processes said block statement in the boxed state.
 (define handle_begin
   (lambda (expr boxed_state master_return break continue throw)
-    (begin (begin_helper expr (new_block_box boxed_state) master_return break continue throw) (remove_top_layer boxed_state))))
+    (begin (new_block_box boxed_state) (begin_helper expr boxed_state master_return break continue throw) (remove_top_layer boxed_state))))
 
 ;Helper method for handle_begin. Takes a list of expressions, a state with a new layer, master_return, break,
 ;continue and throw and processes the code block within the new layer of the boxed state.
 (define begin_helper
   (lambda (expr boxed_state master_return break continue throw)
-    ((null? (rest expr) ))
-    (else
-     (M_state_box (first_of_rest expr) boxed_state master_return break continue throw)
-     (begin_helper (rest expr) boxed_state master_return break continue throw))))
+    (cond
+      ((null? (rest expr)) )
+      (else
+       (M_state_box (first_of_rest expr) boxed_state master_return break continue throw)
+       (begin_helper (rest expr) boxed_state master_return break continue throw)))))
 
 ;Skeleton code for other helper methods:
 (define handle_try
