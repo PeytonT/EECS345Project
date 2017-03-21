@@ -1,1 +1,1 @@
-var z; z = 10; return z;
+var x; var y = (x = 5) + (x = 6); return y * 100 + x;

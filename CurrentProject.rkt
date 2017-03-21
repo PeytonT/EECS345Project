@@ -40,11 +40,14 @@
     (cond
       ((atom? expr) )
       ((null? expr) )
-      ((eq? (first expr) 'var) (handle_declare (first_of_rest expr) (rest_of_rest expr) boxed_state master_return))
+      ;Handles the two possibilities of variable declaration, either assigning an empty list if now value is given, or the given value if a value is given.
+      ((eq? (first expr) 'var) (if (null? (rest_of_rest expr))
+                                   (handle_declare (first_of_rest expr) () boxed_state master_return break continue throw)
+                                   (handle_declare (first_of_rest expr) (first_of_rest_of_rest expr) boxed_state master_return break continue throw)))
       ((eq? (first expr) '=) (handle_assign (first_of_rest expr) (first_of_rest_of_rest expr) boxed_state master_return break continue throw))
-      ((eq? (first expr) 'return) (return (M_value (first_of_rest expr) (unbox boxed_state) master_return break continue throw) (unbox boxed_state) master_return))
+      ((eq? (first expr) 'return) (return (M_value (first_of_rest expr) boxed_state master_return break continue throw) master_return))
       ((eq? (first expr) 'if) (if* (rest expr) boxed_state master_return break continue throw))
-      ((eq? (first expr) 'while) (call/cc (k) (while (first_of_rest expr) (first_of_rest_of_rest expr) boxed_state master_return k continue throw)))
+      ((eq? (first expr) 'while) (call/cc (lambda (k) (while (first_of_rest expr) (first_of_rest_of_rest expr) boxed_state master_return k continue throw))))
       
       ((eq? (first expr) 'begin) (handle_begin expr boxed_state master_return break continue throw))
       ((eq? (first expr) 'try) (handle_try expr boxed_state master_return break continue throw))
@@ -62,7 +65,7 @@
       ((atom? expr) (if (number? expr) expr (if (or (equal? expr 'true) (equal? expr 'false)) (if (equal? expr 'true) #t #f) (get_var_value_box expr boxed_state))))
       ((and (unary? expr) (eq? (first expr) '-)) (* -1 (M_value (first_of_rest expr) boxed_state master_return break continue throw)))
       ((eq? (first expr) '=) (begin
-                               (M_state expr boxed_state master_return break continue throw)
+                               (M_state_box expr boxed_state master_return break continue throw)
                                (M_value (first_of_rest_of_rest expr) boxed_state master_return break continue throw)))
       ((is_math_op? expr) ((get_math_op expr)
                            (M_value (first_of_rest expr) boxed_state master_return break continue throw)
@@ -314,11 +317,11 @@
 ;Takes a variable, a list containing a value, a state in a box, and the continuation return value and updates the state in the box to be
 ;the state where the variable has been declared in the top layer. If it is being declared but not initialized, use value ().
 (define handle_declare
-  (lambda (var value boxed_state master_return)
+  (lambda (var value boxed_state master_return break continue throw)
     (let ([state (unbox boxed_state)])
       (cond
         ((null? value) (set-box! boxed_state (cons (newfirsts var value (first state)) (rest state))))
-        (else (set-box! boxed_state (cons (newfirsts var (M_value value state master_return) (first state)) (rest state))))))))
+        (else (set-box! boxed_state (cons (newfirsts var (M_value value boxed_state master_return break continue throw) (first state)) (rest state))))))))
 
 ;Takes a variable, a value, and a state and sets the value of that variable in the state to be the given value. If the variable is not in the state an error is thrown.
 (define update_state
@@ -378,7 +381,7 @@
 ;Takes an expression, a state, and the current continuation return value. The method then returns the value of the expression in the state. Once return is called, the program
 ;terminates, as the final value of the continuation return has been found.
 (define return
-  (lambda (value state master_return)
+  (lambda (value master_return)
     (cond
       ((is_boolean? value) (if value (master_return 'true) (master_return 'false)))
       (else (master_return value)))))
@@ -387,20 +390,20 @@
 ;If the condition is true in the state, the M_state is called on the first expression after the condition.
 ;If the condition is false and the second expression after the condition is not null, then M_state is called on the second expression.
 (define if*
-  (lambda (expr boxed_state return break continue throw)
-    (letrec ([truth (M_boolean (first expr) (unbox boxed_state) return)])
+  (lambda (expr boxed_state master_return break continue throw)
+    (letrec ([truth (M_boolean (first expr) boxed_state master_return break continue throw)])
       (cond
-        ((truth) (M_state_box (first_of_rest expr) boxed_state return break continue throw)
-        ((and (not truth) (not (eq? (rest_of_rest expr) ()))) (M_state_box (first_of_rest_of_rest expr) boxed_state return break continue throw)))))))
+        ((eq? truth #t) (M_state_box (first_of_rest expr) boxed_state master_return break continue throw))
+        ((and (eq? truth #f) (not (eq? (rest_of_rest expr) ()))) (M_state_box (first_of_rest_of_rest expr) boxed_state master_return break continue throw))))))
 
 ;Takes a condition, a loop body, a boxed state, and the M_state conditions.
 ;If the condition is true in the state, it recursively calls itself on the condition, the loop body, the continuations,
 ;and the state, after M_state has been called on the loop body.
 (define while
-  (lambda (condition loop boxed_state return break continue throw)
-    (letrec ([truth (M_boolean (condition) (unbox boxed_state) return)])
+  (lambda (condition loop boxed_state master_return break continue throw)
+    (letrec ([truth (M_boolean condition boxed_state master_return break continue throw)])
       (cond
-        ((truth) (begin (call/cc (k) (M_state loop boxed_state return break k throw)) (while condition loop boxed_state return break continue throw)))))))
+        ((eq? truth #t) (begin (call/cc (lambda (k) (M_state_box loop boxed_state master_return break k throw))) (while condition loop boxed_state master_return break continue throw)))))))
 
 ;This section is for abstractions of the car/cdr functions. first and rest are already implemented by Pretty Big
 
