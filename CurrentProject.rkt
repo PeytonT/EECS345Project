@@ -120,6 +120,13 @@
   (lambda (state)
     (set-box! state (cons (first (empty_state2)) (unbox state)))))
 
+;Takes a boxed state and removes the top layer of said state, if it exists.
+(define remove_top_layer
+  (lambda (state)
+    (cond
+      ((null? (unbox state)) (error "Tried to remove a layer from the state, but no such layer exists!"))
+      (else (set-box! state (rest (unbox state)))))))
+
 ;Tells us if the expression is a math operation
 (define is_math_op?
   (lambda (expr)
@@ -404,6 +411,37 @@
     (letrec ([truth (M_boolean condition boxed_state master_return break continue throw)])
       (cond
         ((eq? truth #t) (begin (call/cc (lambda (k) (M_state_box loop boxed_state master_return break k throw))) (while condition loop boxed_state master_return break continue throw)))))))
+
+;Takes a block expression, a boxed state, master return, break, continue and throw, and processes said block statement in the boxed state.
+(define handle_begin
+  (lambda (expr boxed_state master_return break continue throw)
+    (begin (begin_helper expr (new_block_box boxed_state) master_return break continue throw) (remove_top_layer boxed_state))))
+
+;Helper method for handle_begin. Takes a list of expressions, a state with a new layer, master_return, break,
+;continue and throw and processes the code block within the new layer of the boxed state.
+(define begin_helper
+  (lambda (expr boxed_state master_return break continue throw)
+    ((null? (rest expr) ))
+    (else
+     (M_state_box (first_of_rest expr) boxed_state master_return break continue throw)
+     (begin_helper (rest expr) boxed_state master_return break continue throw))))
+
+;Skeleton code for other helper methods:
+(define handle_try
+  (lambda (expr boxed_state master_return break continue throw)
+    (cond
+      ((null? expr) ))))
+
+(define handle_catch
+  (lambda (expr boxed_state master_return break continue throw)
+    (cond
+      ((null? expr) ))))
+
+(define handle_finally
+  (lambda (expr boxed_state master_return break continue throw)
+    (cond
+      ((null? expr) ))))
+;end of skeleton code.
 
 ;This section is for abstractions of the car/cdr functions. first and rest are already implemented by Pretty Big
 
