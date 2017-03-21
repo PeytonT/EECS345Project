@@ -55,8 +55,8 @@
       ((eq? (first expr) 'throw) (handle_throw expr boxed_state master_return break continue throw))
       ((eq? (first expr) 'catch) (handle_catch expr boxed_state master_return break continue throw))
       ((eq? (first expr) 'finally) (handle_finally expr boxed_state master_return break continue throw))
-      ((eq? (first expr) 'break) (break ()))
-      ((eq? (first expr) 'continue) (continue ())))))
+      ((eq? (first expr) 'break) (break (remove_top_layer boxed_state)))
+      ((eq? (first expr) 'continue) (continue (remove_top_layer boxed_state))))))
      
 ;Takes an expression, a state, and the continuation return and returns the value of the expression evaluated in the given state.
 ;The evaluated expressions in M_value use math operators (i.e. + _ * / %) to produce/declare/assign values. The expression may contain assignments.
@@ -118,8 +118,7 @@
 
 ;Takes a state in a box and adds an empty layer to the top of the state
 (define new_block_box
-  (lambda (state)
-    (set-box! state (cons (first (empty_state2)) (unbox state)))))
+  (lambda (state) (set-box! state (cons (first (empty_state2)) (unbox state)))))
 
 ;Takes a boxed state and removes the top layer of said state, if it exists.
 (define remove_top_layer
@@ -288,12 +287,12 @@
       (else (get_var_value_layer var (removefirsts layer))))))
 
 ;Gets the value of a given varable in a given layer state, or errors if no such variable exists.
-(define get_var_value2
+(define get_var_value
   (lambda (var state)
     (cond
       ((null? state) (error "Attempting to use an undeclared variable."))
       ((first (get_var_value_layer var (first state))) (first_of_rest (get_var_value_layer var (first state))))
-      (else (get_var_value2 var (rest state))))))
+      (else (get_var_value var (rest state))))))
 
 ;Gets the value of a variable possibly stored in a layer of a state stored in a box. Returns (boolean value), where boolean is true and value is the var's value if the var was present
 ;and boolean is false otherwise
@@ -303,7 +302,7 @@
      (cond
       ((null? state) (error "Attempting to use an undeclared variable."))
       ((first (get_var_value_layer var (first state))) (first_of_rest (get_var_value_layer var (first state))))
-      (else (get_var_value2 var (rest state)))))))
+      (else (get_var_value var (rest state)))))))
 
 ;Takes a variable, a list containing a value, a state, and the continuation return value and
 ;returns the state where the variable has been declared. If it is being declared but not initialized, use value ().
@@ -423,10 +422,10 @@
 (define begin_helper
   (lambda (expr boxed_state master_return break continue throw)
     (cond
-      ((null? (rest expr)) )
+      ((null? (rest expr)))
       (else
-       (M_state_box (first_of_rest expr) boxed_state master_return break continue throw)
-       (begin_helper (rest expr) boxed_state master_return break continue throw)))))
+        (M_state_box (first_of_rest expr) boxed_state master_return break continue throw)
+        (begin_helper (rest expr) boxed_state master_return break continue throw)))))
 
 ;Skeleton code for other helper methods:
 (define handle_try
