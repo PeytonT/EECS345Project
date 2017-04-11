@@ -1,7 +1,7 @@
 ;EECS345 Programming Project Part 2
 ;Professor Lewicki
 ;Project Partners: Peyton Turner (dpt14) and Jack La Rue (jvl13)
-;3/20/17
+;4/10/17
 ;Language used: Pretty Big
 (load "simpleParser.scm")
 
@@ -248,15 +248,10 @@
       ((and (not (is_boolean? val1)) (not (is_boolean? val2))) (>= val1 val2))
       (else (error "One value is not of type int. Condition cannot be determined!")))))
 
-;Takes two lists l1 and l2 and returns (l1 l2)
-(define encapsulate
-  (lambda (l1 l2)
-    (cons l1 (cons l2 '()))))
-
 ;Takes three inputs: two values and a list. Adds new first elements to a list of two lists.
 (define newfirsts
   (lambda (f1 f2 l)
-    (encapsulate (cons f1 (first l)) (cons f2 (first_of_rest l)))))
+    (list (cons f1 (first l)) (cons f2 (first_of_rest l)))))
 
 ;Takes an input list of two lists and returns a list of the first two elements of those lists
 (define getfirsts
@@ -266,28 +261,12 @@
 ;Removes the first elements of the sublists of a list. Said list is comprised of two lists.
 (define removefirsts
   (lambda (l)
-    (encapsulate (rest_of_first l) (rest_of_first_of_rest l))))
+    (list (rest_of_first l) (rest_of_first_of_rest l))))
 
 ;Takes two inputs and makes them the first two values in the lists in an input list of two lists.
 (define replacefirsts
  (lambda (f1 f2 l)
    (newfirsts f1 f2 (removefirsts l))))
-
-;Gets the value of a variable possibly stored in a layer. Returns (boolean value), where boolean is true and value is the var's value if the var was present, and boolean is false otherwise
-(define get_var_value_layer
-  (lambda (var layer)
-    (cond
-      ((null? (first layer)) (cons #f '(())))
-      ((eq? var (first_of_first layer)) (if (not (null? (first_of_first_of_rest layer))) (cons #t (cons (first_of_first_of_rest layer) '())) (error "Attempting to use unassigned variable.")))
-      (else (get_var_value_layer var (removefirsts layer))))))
-
-;Gets the value of a given varable in a given layer state, or errors if no such variable exists.
-(define get_var_value
-  (lambda (var state)
-    (cond
-      ((null? state) (error "Attempting to use an undeclared variable."))
-      ((first (get_var_value_layer var (first state))) (first_of_rest (get_var_value_layer var (first state))))
-      (else (get_var_value var (rest state))))))
 
 ;Gets the value of a variable possibly stored in a layer of a state stored in a box. Returns (boolean value), where boolean is true and value is the var's value if the var was present
 ;and boolean is false otherwise
@@ -299,32 +278,48 @@
       ((first (get_var_value_layer var (first state))) (first_of_rest (get_var_value_layer var (first state))))
       (else (get_var_value var (rest state)))))))
 
+;Helper of get_var_value_box
+;Gets the value of a given varable in a given layer state, or errors if no such variable exists.
+(define get_var_value
+  (lambda (var state)
+    (cond
+      ((null? state) (error "Attempting to use an undeclared variable."))
+      ((first (get_var_value_layer var (first state))) (first_of_rest (get_var_value_layer var (first state))))
+      (else (get_var_value var (rest state))))))
+
+;Helper of get_var_value_box
+;Gets the value of a variable possibly stored in a layer. Returns (boolean value), where boolean is true and value is the var's value if the var was present, and boolean is false otherwise
+(define get_var_value_layer
+  (lambda (var layer)
+    (cond
+      ((null? (first layer)) (list #f '()))
+      ((eq? var (first_of_first layer)) (if (not (null? (unbox (first_of_first_of_rest layer)))) (list #t (unbox (first_of_first_of_rest layer))) (error "Attempting to use unassigned variable.")))
+      (else (get_var_value_layer var (removefirsts layer))))))
+
 ;Takes a variable, a list containing a value, a state in a box, and the continuation return value and updates the state in the box to be
-;the state where the variable has been declared in the top layer. If it is being declared but not initialized, use value ().
+;the state where the variable has been declared in the top layer in a box. If it is being declared but not initialized, use value ().
 (define handle_declare
   (lambda (var value boxed_state master_return break continue throw)
     (let ([state (unbox boxed_state)])
       (cond
-        ((null? value) (set-box! boxed_state (cons (newfirsts var value (first state)) (rest state))))
-        (else (set-box! boxed_state (cons (newfirsts var (M_value value boxed_state master_return break continue throw) (first state)) (rest state))))))))
+        ((null? value) (set-box! boxed_state (cons (newfirsts var (box value) (first state)) (rest state))))
+        (else (set-box! boxed_state (cons (newfirsts var (box (M_value value boxed_state master_return break continue throw)) (first state)) (rest state))))))))
 
-;Takes a variable, a value, and a state and sets the value of that variable in the state to be the given value. If the variable is not in the state an error is thrown.
+;Takes a variable, a value, and a state in a box and sets the value of that variable in the state in that box to be the given value. Works on layered states.
+(define update_box
+  (lambda (var value boxed_state)
+    (let ([state (unbox boxed_state)])
+      (cond
+        ((null? state) (error "Variable is being assigned before it has been declared."))
+        (else (update_state var value state))))))
+
+;Takes a variable, a value, and a state and sets the value of that variable in the state to be the given value. Works on layer states.
 (define update_state
   (lambda (var value state)
     (cond
-      ((null? (first state)) (error "Variable is being assigned before it has been declared."))
-      ((equal? var (first_of_first state)) (replacefirsts var value state))
-      (else (newfirsts (first_of_first state) (first_of_first_of_rest state) (update_state var value (removefirsts state)))))))
-
-;Takes a variable, a value, and a layer of a state and sets the value of that variable in the state to be the given value if it is present.
-;Returns (#t updated_layer) if the value was present, and (#f layer) otherwise.
-(define update_layer
-  (lambda (var value layer)
-    (cond
-      ((null? (first layer)) (cons #f (cons layer '())))
-      ((eq? var (first_of_first layer)) (cons #t (cons (replacefirsts var value layer) '())))
-      (else (let ([result (update_layer var value (removefirsts layer))])
-              (cons (first result) (cons (newfirsts (first (getfirsts layer)) (first_of_rest (getfirsts layer)) (first_of_rest result)) '()))))))) ;What have I done? DPT
+      ((null? state) (error "Variable is being assigned before it has been declared."))
+      ((in_layer var (first state)) (set-box! (get_box_from_layer var (first state)) value))
+      (else (update_state var value (rest state))))))
 
 ;Takes a variable and a layer and returns true if the variable is in the layer and false otherwise.
 (define in_layer
@@ -334,22 +329,13 @@
       ((eq? var (first_of_first layer)) #t)
       (else (in_layer var (removefirsts layer))))))
 
-;Takes a variable, a value, and a state and sets the value of that variable in the state to be the given value. Works on layer states.
-(define update_state2
-  (lambda (var value state)
+;Takes a variable and a layer and returns the box bound to the variable name, or errors if no such box exists.
+(define get_box_from_layer
+  (lambda (var layer)
     (cond
-      ((null? state) (error "Variable is being assigned before it has been declared."))
-      ((in_layer var (first state)) (cons (first_of_rest (update_layer var value (first state))) (rest state)))
-      (else (cons (first state) (update_state2 var value (rest state)))))))
-
-;Takes a variable, a value, and a state in a box and sets the value of that variable in the state in that box to be the given value. Works on layered states.
-(define update_box
-  (lambda (var value boxed_state)
-    (let ([state (unbox boxed_state)])
-      (cond
-        ((null? state) (error "Variable is being assigned before it has been declared."))
-        ((in_layer var (first state)) (set-box! boxed_state (cons (first_of_rest (update_layer var value (first state))) (rest state))))
-        (else (set-box! boxed_state (cons (first state) (update_state2 var value (rest state)))))))))
+      ((null? (first layer)) (error "Variable is being assigned before it has been declared."))
+      ((eq? var (first_of_first layer)) (first_of_first_of_rest layer))
+      (else (get_box_from_layer var (removefirsts layer))))))
 
 ;Takes a variable, an expression, a state in a box, and the continuation return and updates the boxed state to the state where the variable is assigned to the value
 ;of the expression if the variable is declared. Otherwise creates an error.
