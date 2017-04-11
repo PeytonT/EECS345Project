@@ -1,0 +1,184 @@
+;EECS345 Test Suite P3
+;Professor Lewicki
+;Project Partners: Peyton Turner (dpt14) and Jack La Rue (jvl13)
+;4/10/17
+;Language used: Pretty Big
+
+;Errors in Project 3: 12, 17
+
+(load "functionParser.scm")
+(load "CurrentProject.rkt")
+
+(require racket/trace)
+
+(define testfunc
+  (lambda (file)
+    (interpret file)))
+
+(define testsuiteP3
+  (lambda (list)
+    (cond
+      ((eq? 10 (interpret "testing/p3/test1.txt"))
+       (testsuite2 (cons '("Test 1 passes") list)))
+      (else
+       (testsuite2 (cons '("Test 1 fails") list))))))
+
+(define testsuite2
+  (lambda (list)
+    (cond
+      ((eq? 14 (interpret "testing/p3/test2.txt"))
+       (testsuite3 (cons '("Test 2 passes") list)))
+      (else
+       (testsuite3 (cons '("Test 2 fails") list))))))
+
+(define testsuite3
+  (lambda (list)
+    (cond
+      ((eq? 45 (interpret "testing/p3/test3.txt"))
+       (testsuite4 (cons '("Test 3 passes") list)))
+      (else
+       (testsuite4 (cons '("Test 3 fails") list))))))
+
+(define testsuite4
+  (lambda (list)
+    (cond
+      ((eq? 55 (interpret "testing/p3/test4.txt"))
+       (testsuite5 (cons '("Test 4 passes") list)))
+      (else
+       (testsuite5 (cons '("Test 4 fails") list))))))
+
+(define testsuite5
+  (lambda (list)
+    (cond
+      ((eq? 1 (interpret "testing/p3/test5.txt"))
+       (testsuite6 (cons '("Test 5 passes") list)))
+      (else
+       (testsuite6 (cons '("Test 5 fails") list))))))
+
+(define testsuite6
+  (lambda (list)
+    (cond
+      ((eq? 115 (interpret "testing/p3/test6.txt"))
+       (testsuite7 (cons '("Test 6 passes") list)))
+      (else
+       (testsuite7 (cons '("Test 6 fails") list))))))
+
+(define testsuite7
+  (lambda (list)
+    (cond
+      ((eq? 'true (interpret "testing/p3/test7.txt"))
+       (testsuite8 (cons '("Test 7 passes") list)))
+      (else
+       (testsuite8 (cons '("Test 7 fails") list))))))
+
+(define testsuite8
+  (lambda (list)
+    (cond
+      ((eq? 20 (interpret "testing/p3/test8.txt"))
+       (testsuite9 (cons '("Test 8 passes") list)))
+      (else
+       (testsuite9 (cons '("Test 8 fails") list))))))
+
+(define testsuite9
+  (lambda (list)
+    (cond
+      ((eq? 24 (interpret "testing/p3/test9.txt"))
+       (testsuite10 (cons '("Test 9 passes") list)))
+      (else
+       (testsuite10 (cons '("Test 9 fails") list))))))
+
+(define testsuite10
+  (lambda (list)
+    (cond
+      ((eq? 2 (interpret "testing/p3/test10.txt"))
+       (testsuite11 (cons '("Test 10 passes") list)))
+      (else
+       (testsuite11 (cons '("Test 10 fails") list))))))
+
+(define testsuite11
+  (lambda (list)
+    (cond
+      ((eq? 35 (interpret "testing/p3/test11.txt"))
+       (testsuite12 (cons '("Test 11 passes") list)))
+      (else
+       (testsuite12 (cons '("Test 11 fails") list))))))
+
+(define testsuite12
+  (lambda (list)
+    (testsuite13 list)))
+
+(define testsuite13
+  (lambda (list)
+    (cond
+      ((eq? 90 (interpret "testing/p3/test13.txt"))
+       (testsuite14 (cons '("Test 13 passes") list)))
+      (else
+       (testsuite14 (cons '("Test 13 fails") list))))))
+
+(define testsuite14
+  (lambda (list)
+    (cond
+      ((eq? 69 (interpret "testing/p3/test14.txt"))
+       (testsuite15 (cons '("Test 14 passes") list)))
+      (else
+       (testsuite15 (cons '("Test 14 fails") list))))))
+
+(define testsuite15
+  (lambda (list)
+    (cond
+      ((eq? 87 (interpret "testing/p3/test15.txt"))
+       (testsuite16 (cons '("Test 15 passes") list)))
+      (else
+       (testsuite16 (cons '("Test 15 fails") list))))))
+
+(define testsuite16
+  (lambda (list)
+    (cond
+      ((eq? 64 (interpret "testing/p3/test16.txt"))
+       (testsuite17 (cons '("Test 16 passes") list)))
+      (else
+       (testsuite17 (cons '("Test 16 fails") list))))))
+
+(define testsuite17
+  (lambda (list)
+    (testsuite18 list)))
+
+(define testsuite18
+  (lambda (list)
+    (cond
+      ((eq? 125 (interpret "testing/p3/test18.txt"))
+       (testsuite19 (cons '("Test 18 passes") list)))
+      (else
+       (testsuite19 (cons '("Test 18 fails") list))))))
+
+(define testsuite19
+  (lambda (list)
+    (cond
+      ((eq? 100 (interpret "testing/p3/test19.txt"))
+       (testsuite20 (cons '("Test 19 passes") list)))
+      (else
+       (testsuite20 (cons '("Test 19 fails") list))))))
+
+(define testsuite20
+  (lambda (list)
+    (cond
+      ((eq? 2000400 (interpret "testing/p3/test20.txt"))
+       (endcap (cons '("Test 20 passes") list)))
+      (else
+       (endcap (cons '("Test 20 fails. However, this is as expected.") list))))))
+
+(define endcap
+  (lambda (list)
+    (myreverse list)))
+
+(define myreverse
+  (lambda (l)
+    (cond
+      ((null? l) l)
+      (else (myappend (myreverse (cdr l)) (cons (car l) '()))))))
+
+(define myappend
+  (lambda (l1 l2)
+    (cond
+      ((null? l1) l2)
+      (else (cons (car l1) (myappend (cdr l1) l2))))))
