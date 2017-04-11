@@ -44,6 +44,7 @@
       ((eq? (first expr) 'var) (if (null? (rest_of_rest expr))
                                    (handle_declare (first_of_rest expr) '() boxed_state master_return break continue throw)
                                    (handle_declare (first_of_rest expr) (first_of_rest_of_rest expr) boxed_state master_return break continue throw)))
+      ((eq? (first expr) 'function) (handle_function_declare (rest expr) boxed_state master_return break continue throw))
       ((eq? (first expr) '=) (handle_assign (first_of_rest expr) (first_of_rest_of_rest expr) boxed_state master_return break continue throw))
       ((eq? (first expr) 'return) (return (M_value (first_of_rest expr) boxed_state master_return break continue throw) master_return))
       ((eq? (first expr) 'if) (if* (rest expr) boxed_state master_return break continue throw))
@@ -54,7 +55,8 @@
       ((eq? (first expr) 'try) (handle_try expr boxed_state master_return break continue throw))
       ((eq? (first expr) 'throw) (handle_throw expr boxed_state master_return break continue throw))
       ((eq? (first expr) 'catch) (handle_catch expr boxed_state master_return break continue throw))
-      ((eq? (first expr) 'finally) (handle_finally expr boxed_state master_return break continue throw)))))
+      ((eq? (first expr) 'finally) (handle_finally expr boxed_state master_return break continue throw))
+      ((eq? (first expr) 'funcall) (handle_function_call (rest expr) boxed_state master_return break continue throw)))))
      
 ;Takes an expression, a state, and the continuation return and returns the value of the expression evaluated in the given state.
 ;The evaluated expressions in M_value use math operators (i.e. + _ * / %) to produce/declare/assign values. The expression may contain assignments.
@@ -67,6 +69,7 @@
       ((eq? (first expr) '=) (begin
                                (M_state expr boxed_state master_return break continue throw)
                                (M_value (first_of_rest_of_rest expr) boxed_state master_return break continue throw)))
+      ((eq? (first expr) 'funcall) (handle_function_call (rest expr) boxed_state master_return break continue throw))
       ((is_math_op? expr) ((get_math_op expr)
                            (M_value (first_of_rest expr) boxed_state master_return break continue throw)
                            (M_value (first_of_rest_of_rest expr) boxed_state master_return break continue throw)))
@@ -269,12 +272,12 @@
    (newfirsts f1 f2 (removefirsts l))))
 
 ;Gets the value of a variable possibly stored in a layer of a state stored in a box. Returns (boolean value), where boolean is true and value is the var's value if the var was present
-;and boolean is false otherwise
+;and boolean is false otherwise.
 (define get_var_value_box
   (lambda (var boxed_state)
     (let ([state (unbox boxed_state)])
      (cond
-      ((null? state) (error "Attempting to use an undeclared variable."))
+      ((null? state) (error "Attempting to use an undeclared variable or function."))
       ((first (get_var_value_layer var (first state))) (first_of_rest (get_var_value_layer var (first state))))
       (else (get_var_value var (rest state)))))))
 
@@ -283,7 +286,7 @@
 (define get_var_value
   (lambda (var state)
     (cond
-      ((null? state) (error "Attempting to use an undeclared variable."))
+      ((null? state) (error "Attempting to use an undeclared variable or function."))
       ((first (get_var_value_layer var (first state))) (first_of_rest (get_var_value_layer var (first state))))
       (else (get_var_value var (rest state))))))
 
@@ -304,6 +307,35 @@
       (cond
         ((null? value) (set-box! boxed_state (cons (newfirsts var (box value) (first state)) (rest state))))
         (else (set-box! boxed_state (cons (newfirsts var (box (M_value value boxed_state master_return break continue throw)) (first state)) (rest state))))))))
+
+;Takes a function expression (name (parameters) (body)) and binds it in the state. The binding of a function looks much like the binding of a variable, but instead of the
+;name being bound to a value in a box, the bound box contains (1) a list of parameters, (2) the state at the time of binding (which, since it is composed of boxes, will be updated
+;as the values of variables in the state are updated, (3) and the body of the function.
+(define handle_function_declare
+  (lambda (func boxed_state master_return break continue throw)
+    (let ([state (unbox boxed_state)] [name (get_function_name func)] [parameters (get_function_params func)] [body (get_function_body func)])
+      (set-box! boxed_state (cons (newfirsts name (box (list parameters state body)) (first state)) (rest state))))))
+
+;Gets the name of an input function expression.
+(define get_function_name
+  (lambda (func)
+    (first func)))
+
+;Gets the parameter list of an input function expression.
+(define get_function_params
+  (lambda (func)
+    (first_of_rest func)))
+
+;Gets the body of an input function expression.
+(define get_function_body
+  (lambda (func)
+    (first_of_rest_of_rest func)))
+
+;Takes a variable, an expression, a state in a box, and the continuation return and updates the boxed state to the state where the variable is assigned to the value
+;of the expression if the variable is declared. Otherwise creates an error.
+(define handle_assign
+  (lambda (var expr boxed_state master_return break continue throw)
+    (update_box var (M_value expr boxed_state master_return break continue throw) boxed_state)))
 
 ;Takes a variable, a value, and a state in a box and sets the value of that variable in the state in that box to be the given value. Works on layered states.
 (define update_box
@@ -336,12 +368,6 @@
       ((null? (first layer)) (error "Variable is being assigned before it has been declared."))
       ((eq? var (first_of_first layer)) (first_of_first_of_rest layer))
       (else (get_box_from_layer var (removefirsts layer))))))
-
-;Takes a variable, an expression, a state in a box, and the continuation return and updates the boxed state to the state where the variable is assigned to the value
-;of the expression if the variable is declared. Otherwise creates an error.
-(define handle_assign
-  (lambda (var expr boxed_state master_return break continue throw)
-    (update_box var (M_value expr boxed_state master_return break continue throw) boxed_state)))
 
 ;Takes an expression, a state, and the current continuation return value. The method then returns the value of the expression in the state. Once return is called, the program
 ;terminates, as the final value of the continuation return has been found.
@@ -446,6 +472,57 @@
 (define handle_throw
   (lambda (expr boxed_state master_return break continue throw)
     (throw (M_value (first_of_rest expr) boxed_state master_return break continue throw))))
+
+;FUNCALL! NOT THAT THERE'S ANYTHING FUN ABOUT!
+;Takes a function of the form (name parameters) and returns the result of evaluating it.
+(define handle_function_call
+  (lambda (func boxed_state master_return break continue throw)
+    (letrec (
+             [name (first func)]
+             [parameter_values (rest func)]
+             [function_info (get_var_value_box name boxed_state)]
+             [parameter_names (first function_info)]
+             [scope (first_of_rest function_info)]
+             [body (first_of_rest_of_rest function_info)])
+      (if (atom? function_info) (error "Attempted to reference a variable as a function.")
+          ;Main gets called with the master return, other functions get called with the call/cc return.
+          (if (eq? name main)
+              (evaluate_function name (first body) (rest body) (bind_parameters_in_scope parameter_names parameter_values scope) master_return throw)
+           (call/cc
+            (lambda (return_from_function)
+              (evaluate_function name (first body) (rest body) (bind_parameters_in_scope parameter_names parameter_values scope) return_from_function throw))))))))
+
+;Takes a list of parameter names, a list of parameter values, and the scope of a function. If the parameter lists are the same name, put each parameter value into a box,
+;and add a new layer to the scope containing each parameter name bound to the box containing its respective value. Otherwise error.
+(define bind_parameters_in_scope
+  (lambda (parameter_names parameter_values scope)
+    (if (eq? (length parameter_names) (length parameter_values))
+        (cons (list parameter_names (boxify parameter_values)) scope)
+        (error "Incorrect number of parameters in function."))))
+
+;Takes a list and returns a same-sized list of the list entries, but in boxes
+(define boxify
+  (lambda (l)
+    (cond
+      ((null? l) ())
+      (else (cons (box (first l)) (boxify (rest l)))))))
+
+;Takes a function, given by a name, a first line, and the rest of the function, and evaluates it in the input state. Returns to functino_return, throws to throw.
+(define evaluate_function
+  (lambda (name first_line rest_of_function boxed_state function_return throw)
+    (cond
+      ((and (null? first_line) (eq? name 'main)) (error "Main Function Completed Without A Return Statement"))
+      ((null? rest_of_program) (M_state first_line boxed_state function_return
+                                 (lambda (x) (error "Called break outside of a loop"))
+                                 (lambda (y) (error "Called continue outside of a loop"))
+                                 (lambda (z) throw)))
+      (else (begin
+              (M_state first_line boxed_scope function_return
+                           (lambda (x) (error "Called break outside of a loop"))
+                           (lambda (y) (error "Called continue outside of a loop"))
+                           (lambda (z) throw))
+                   (evaluate_function (first rest_of_program) (rest rest_of_program) boxed_state function_return))))))
+    
 
 ;This section is for abstractions of the car/cdr functions. first and rest are already implemented by Pretty Big
 
