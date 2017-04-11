@@ -292,7 +292,7 @@
 (define get_var_value
   (lambda (var state)
     (cond
-      ((null? state) (error "Attempting to use an undeclared variable or function."))
+      ((null? state) (begin (write var) (error "Attempting to use an undeclared variable or function.")))
       ((first (get_var_value_layer var (first state))) (first_of_rest (get_var_value_layer var (first state))))
       (else (get_var_value var (rest state))))))
 
@@ -321,6 +321,7 @@
   (lambda (func boxed_state master_return break continue throw)
     (let ([state (unbox boxed_state)] [name (get_function_name func)] [parameters (get_function_params func)] [body (get_function_body func)])
       (set-box! boxed_state (cons (newfirsts name (box (list parameters state body)) (first state)) (rest state))))))
+;Currently does not handle recursive functions. Functions are not defined in their own scope. Must correct at some point.
 
 ;Gets the name of an input function expression.
 (define get_function_name

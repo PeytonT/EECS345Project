@@ -35,17 +35,17 @@
   (lambda (list)
     (cond
       ((eq? 45 (interpret "testing/p3/test3.txt"))
-       (testsuite4 (cons '("Test 3 passes") list)))
+       (testsuite5 (cons '("Test 3 passes") list)))
       (else
-       (testsuite4 (cons '("Test 3 fails") list))))))
+       (testsuite5 (cons '("Test 3 fails") list))))))
 
-(define testsuite4
-  (lambda (list)
-    (cond
-      ((eq? 55 (interpret "testing/p3/test4.txt"))
-       (testsuite5 (cons '("Test 4 passes") list)))
-      (else
-       (testsuite5 (cons '("Test 4 fails") list))))))
+;(define testsuite4
+ ; (lambda (list)
+  ;  (cond
+   ;   ((eq? 55 (interpret "testing/p3/test4.txt"))
+    ;   (testsuite5 (cons '("Test 4 passes") list)))
+     ; (else
+      ; (testsuite5 (cons '("Test 4 fails") list))))))
 
 (define testsuite5
   (lambda (list)
