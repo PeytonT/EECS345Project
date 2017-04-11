@@ -502,7 +502,7 @@
 (define bind_parameters_in_scope
   (lambda (parameter_names parameter_values scope)
     (if (eq? (length parameter_names) (length parameter_values))
-        (cons (list parameter_names (boxify parameter_values)) scope)
+        (box (cons (list parameter_names (boxify parameter_values)) scope))
         (error "Incorrect number of parameters in function."))))
 
 ;Takes a list and returns a same-sized list of the list entries, but in boxes
@@ -522,7 +522,7 @@
                                  (lambda (y) (error "Called continue outside of a loop"))
                                  (lambda (z) throw)))
       (else (begin
-              (M_state first_line boxed_scope function_return
+              (M_state first_line boxed_state function_return
                            (lambda (x) (error "Called break outside of a loop"))
                            (lambda (y) (error "Called continue outside of a loop"))
                            (lambda (z) throw))
