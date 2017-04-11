@@ -485,7 +485,7 @@
   (lambda (func boxed_state master_return break continue throw)
     (letrec (
              [name (first func)]
-             [parameter_values (rest func)]
+             [parameter_values (M_value_list (rest func) boxed_state master_return break continue throw)]
              [function_info (get_var_value_box name boxed_state)]
              [parameter_names (first function_info)]
              [scope (first_of_rest function_info)]
@@ -497,6 +497,13 @@
            (call/cc
             (lambda (return_from_function)
               (evaluate_function name (first body) (rest body) (bind_parameters_in_scope parameter_names parameter_values scope) return_from_function throw))))))))
+
+;Takes a list of variables/values and the inputs to M_value and returns a list of M_value called on each of the elements of the input list.
+(define M_value_list
+  (lambda (inputs boxed_state master_return break continue throw) 
+    (cond
+      ((null? inputs) '())
+      (else (cons (M_value (first inputs) boxed_state master_return break continue throw) (M_value_list (rest inputs) boxed_state master_return break continue throw))))))
 
 ;Takes a list of parameter names, a list of parameter values, and the scope of a function. If the parameter lists are the same name, put each parameter value into a box,
 ;and add a new layer to the scope containing each parameter name bound to the box containing its respective value. Otherwise error.
@@ -527,6 +534,6 @@
                            (lambda (x) (error "Called break outside of a loop"))
                            (lambda (y) (error "Called continue outside of a loop"))
                            (lambda (z) throw))
-                   (evaluate_function (first rest_of_program) (rest rest_of_program) boxed_state function_return))))))
+                   (evaluate_function name (first rest_of_function) (rest rest_of_function) boxed_state function_return throw))))))
     
 
