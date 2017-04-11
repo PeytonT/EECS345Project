@@ -3,7 +3,7 @@
 ;Project Partners: Peyton Turner (dpt14) and Jack La Rue (jvl13)
 ;4/10/17
 ;Language used: Pretty Big
-(load "simpleParser.scm")
+(load "functionParser.scm")
 
 (require racket/trace)
 
@@ -22,10 +22,15 @@
   (lambda (first_line rest_of_program boxed_state master_return)
     (cond
       ((null? first_line) (error "Program Completed Without A Return Statement"))
-      ((null? rest_of_program) (M_state first_line boxed_state master_return
-                                 (lambda (x) (error "Called break outside of a loop"))
-                                 (lambda (y) (error "Called continue outside of a loop"))
-                                 (lambda (z) (error "Threw an exception outside of a try block"))))
+      ((null? rest_of_program) (begin
+                                 (M_state first_line boxed_state master_return
+                                          (lambda (x) (error "Called break outside of a loop"))
+                                          (lambda (y) (error "Called continue outside of a loop"))
+                                          (lambda (z) (error "Threw an exception outside of a try block")))
+                                 (M_state '(funcall main) boxed_state master_return
+                                          (lambda (x) (error "Called break outside of a loop"))
+                                          (lambda (y) (error "Called continue outside of a loop"))
+                                          (lambda (z) (error "Threw an exception outside of a try block")))))
       (else (begin
               (M_state first_line boxed_state master_return
                            (lambda (x) (error "Called break outside of a loop"))
@@ -486,7 +491,7 @@
              [body (first_of_rest_of_rest function_info)])
       (if (atom? function_info) (error "Attempted to reference a variable as a function.")
           ;Main gets called with the master return, other functions get called with the call/cc return.
-          (if (eq? name main)
+          (if (eq? name 'main)
               (evaluate_function name (first body) (rest body) (bind_parameters_in_scope parameter_names parameter_values scope) master_return throw)
            (call/cc
             (lambda (return_from_function)
@@ -512,7 +517,7 @@
   (lambda (name first_line rest_of_function boxed_state function_return throw)
     (cond
       ((and (null? first_line) (eq? name 'main)) (error "Main Function Completed Without A Return Statement"))
-      ((null? rest_of_program) (M_state first_line boxed_state function_return
+      ((null? rest_of_function) (M_state first_line boxed_state function_return
                                  (lambda (x) (error "Called break outside of a loop"))
                                  (lambda (y) (error "Called continue outside of a loop"))
                                  (lambda (z) throw)))
