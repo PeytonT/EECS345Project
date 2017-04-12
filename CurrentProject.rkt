@@ -100,15 +100,12 @@
                                               (M_value (first_rest_rest expr) boxed_state master_return break continue throw)))
       (else (error "You somehow called M_boolean on something without a boolean value.")))))
 
-;Checks if an object is an atom. Returns true if so.
-(define atom?
-  (lambda (x)
-    (and (not (pair? x)) (not (null? x)))))
-
-;Checks if an expression is unary. Returns true if so.
-(define unary?
-  (lambda (expr)
-    (eq? (rest_rest expr) '())))
+;Takes a list of variables/values and the inputs to M_value and returns a list of M_value called on each of the elements of the input list.
+(define M_value_list
+  (lambda (inputs boxed_state master_return break continue throw) 
+    (cond
+      ((null? inputs) '())
+      (else (cons (M_value (first inputs) boxed_state master_return break continue throw) (M_value_list (rest inputs) boxed_state master_return break continue throw))))))
 
 ;Creates an empty program state in a box
 (define empty_state_box
@@ -198,89 +195,10 @@
       ((or (eq? val #t) (eq? val #f)) #t)
       (else #f))))      
 
-;Takes two supposedly boolean inputs and ands them if they are actually booleans. Otherwise throws an error
-(define and_error
-  (lambda (bool1 bool2)
-    (cond
-      ((or (null? bool1) (null? bool2)) (error "Either one or both of your values are null."))
-      ((and (is_boolean? bool1) (is_boolean? bool2)) (and bool1 bool2))
-      (else (error "Attempted to treat a non-boolean as a boolean.")))))
 
-;Takes two supposedly boolean inputs and ors them if they are actually booleans. Otherwise throws an error
-(define or_error
-  (lambda (bool1 bool2)
-    (cond
-      ((or (null? bool1) (null? bool2)) (error "Either one or both of your values are null."))
-      ((and (is_boolean? bool1) (is_boolean? bool2)) (or bool1 bool2))
-      (else (error "Attempted to treat a non-boolean as a boolean.")))))
-
-;Takes two values and determines whether or not they are the same value. These values can be of type int or boolean.
-(define eq_error
-  (lambda (val1 val2)
-    (cond
-      ((or (null? val1) (null? val2)) (error "Either one or both of your values are null."))
-      ((or (and (is_boolean? val1) (is_boolean? val2)) (and (not (is_boolean? val1)) (not (is_boolean? val2)))) (eq? val1 val2))
-      (else (error "Values are of different types. Condition cannot be determined!")))))
-
-;Takes two values and determines whether or not they are not equal. These values can be of type int or boolean.
-(define not_eq_error
-  (lambda (val1 val2)
-    (cond
-      ((or (null? val1) (null? val2)) (error "Either one or both of your values are null."))
-      ((or (and (is_boolean? val1) (is_boolean? val2)) (and (not (is_boolean? val1)) (not (is_boolean? val2)))) (not (eq? val1 val2)))
-      (else (error "Values are of different types. Condition cannot be determined!")))))
-
-;Takes two values and determines whether or not val1 < val2. Values must be of type int.
-(define <_error
-  (lambda (val1 val2)
-    (cond
-      ((or (null? val1) (null? val2)) (error "Either one or both of your values are null."))
-      ((and (not (is_boolean? val1)) (not (is_boolean? val2))) (< val1 val2))
-      (else (error "One value is not of type int. Condition cannot be determined!")))))
-
-;Takes two values and determines whether or not val1 > val2. Values must be of type int.
-(define >_error
-  (lambda (val1 val2)
-    (cond
-      ((or (null? val1) (null? val2)) (error "Either one or both of your values are null."))
-      ((and (not (is_boolean? val1)) (not (is_boolean? val2))) (> val1 val2))
-      (else (error "One value is not of type int. Condition cannot be determined!")))))
-
-;Takes two values and determines whether or not val1 <= val2. Values must be of type int.
-(define <=_error
-  (lambda (val1 val2)
-    (cond
-      ((or (null? val1) (null? val2)) (error "Either one or both of your values are null."))
-      ((and (not (is_boolean? val1)) (not (is_boolean? val2))) (<= val1 val2))
-      (else (error "One value is not of type int. Condition cannot be determined!")))))
-
-;Takes two values and determines whether or not val1 >= val2. Values must be of type int.
-(define >=_error
-  (lambda (val1 val2)
-    (cond
-      ((or (null? val1) (null? val2)) (error "Either one or both of your values are null."))
-      ((and (not (is_boolean? val1)) (not (is_boolean? val2))) (>= val1 val2))
-      (else (error "One value is not of type int. Condition cannot be determined!")))))
-
-;Takes three inputs: two values and a list. Adds new first elements to a list of two lists.
-(define newfirsts
-  (lambda (f1 f2 l)
-    (list (cons f1 (first l)) (cons f2 (first_rest l)))))
-
-;Takes an input list of two lists and returns a list of the first two elements of those lists
-(define getfirsts
-  (lambda (l)
-    (cons (first_first l) (cons (first_first_rest l) '()))))
-
-;Removes the first elements of the sublists of a list. Said list is comprised of two lists.
-(define removefirsts
-  (lambda (l)
-    (list (rest_first l) (rest_first_rest l))))
-
-;Takes two inputs and makes them the first two values in the lists in an input list of two lists.
-(define replacefirsts
- (lambda (f1 f2 l)
-   (newfirsts f1 f2 (removefirsts l))))
+;-----------------------------------------------------------------------------------------------------------------------------------------
+;Var Value
+;-----------------------------------------------------------------------------------------------------------------------------------------
 
 ;Gets the value of a variable possibly stored in a layer of a state stored in a box. Returns (boolean value), where boolean is true and value is the var's value if the var was present
 ;and boolean is false otherwise.
@@ -310,6 +228,11 @@
       ((eq? var (first_first layer)) (if (not (null? (unbox (first_first_rest layer)))) (list #t (unbox (first_first_rest layer))) (error "Attempting to use unassigned variable.")))
       (else (get_var_value_layer var (removefirsts layer))))))
 
+
+;-----------------------------------------------------------------------------------------------------------------------------------------
+;Declare
+;-----------------------------------------------------------------------------------------------------------------------------------------
+
 ;Takes a variable, a list containing a value, a state in a box, and the continuation return value and updates the state in the box to be
 ;the state where the variable has been declared in the top layer in a box. If it is being declared but not initialized, use value ().
 (define handle_declare
@@ -327,27 +250,18 @@
     (let ([state (unbox boxed_state)] [name (get_function_name func)] [parameters (get_function_params func)] [body (get_function_body func)])
       (set-box! boxed_state (cons (newfirsts name (box (list parameters state body)) (first state)) (rest state))))))
 
-;Gets the name of an input function expression.
-(define get_function_name
-  (lambda (func)
-    (first func)))
-
-;Gets the parameter list of an input function expression.
-(define get_function_params
-  (lambda (func)
-    (first_rest func)))
-
-;Gets the body of an input function expression.
-(define get_function_body
-  (lambda (func)
-    (first_rest_rest func)))
-
+;-----------------------------------------------------------------------------------------------------------------------------------------
+;Assign
+;-----------------------------------------------------------------------------------------------------------------------------------------
 ;Takes a variable, an expression, a state in a box, and the continuation return and updates the boxed state to the state where the variable is assigned to the value
 ;of the expression if the variable is declared. Otherwise creates an error.
 (define handle_assign
   (lambda (var expr boxed_state master_return break continue throw)
     (update_box var (M_value expr boxed_state master_return break continue throw) boxed_state)))
 
+;-----------------------------------------------------------------------------------------------------------------------------------------
+;Update
+;-----------------------------------------------------------------------------------------------------------------------------------------
 ;Takes a variable, a value, and a state in a box and sets the value of that variable in the state in that box to be the given value. Works on layered states.
 (define update_box
   (lambda (var value boxed_state)
@@ -364,6 +278,9 @@
       ((in_layer var (first state)) (set-box! (get_box_from_layer var (first state)) value))
       (else (update_state var value (rest state))))))
 
+;-----------------------------------------------------------------------------------------------------------------------------------------
+;Layers
+;-----------------------------------------------------------------------------------------------------------------------------------------
 ;Takes a variable and a layer and returns true if the variable is in the layer and false otherwise.
 (define in_layer
   (lambda (var layer)
@@ -405,6 +322,11 @@
       (cond
         ((eq? truth #t) (begin (call/cc (lambda (k) (M_state loop boxed_state master_return break k throw))) (while condition loop boxed_state master_return break continue throw)))))))
 
+
+;-----------------------------------------------------------------------------------------------------------------------------------------
+;Begin
+;-----------------------------------------------------------------------------------------------------------------------------------------
+
 ;Takes a block expression, a boxed state, master return, break, continue and throw, and processes said block statement in the boxed state.
 (define handle_begin
   (lambda (expr boxed_state master_return break continue throw)
@@ -419,6 +341,11 @@
       (else
         (M_state (first_rest expr) boxed_state master_return break continue throw)
         (begin_helper (rest expr) boxed_state master_return break continue throw)))))
+
+
+;-----------------------------------------------------------------------------------------------------------------------------------------
+;Try
+;-----------------------------------------------------------------------------------------------------------------------------------------
 
 ;Takes an expression in the form of a try statement and the M_state continuations and calls M_state on the body of the try block.
 ;Catches exceptions raised and stores them as a variable, then calls M_state on the catch and finally blocks.
@@ -445,6 +372,11 @@
        (M_state (first expr) boxed_state master_return break continue throw)
        (try_helper (rest expr) boxed_state master_return break continue throw)))))
 
+
+;-----------------------------------------------------------------------------------------------------------------------------------------
+;Catch
+;-----------------------------------------------------------------------------------------------------------------------------------------
+
 ;Takes an expression in the form of a catch statement and the M_state continuations and calls M_state on the body of the catch block.
 (define handle_catch
   (lambda (expr boxed_state master_return break continue throw)
@@ -460,6 +392,11 @@
       (else
        (M_state (first expr) boxed_state master_return break continue throw)
        (catch_helper (rest expr) boxed_state master_return break continue throw)))))
+
+
+;-----------------------------------------------------------------------------------------------------------------------------------------
+;Finally
+;-----------------------------------------------------------------------------------------------------------------------------------------
 
 ;Takes an expression in the form of a finally statement and the M_state continuations and calls M_state on the body of the finally block.
 (define handle_finally
@@ -477,10 +414,34 @@
        (M_state (first expr) boxed_state master_return break continue throw)
        (finally_helper (rest expr) boxed_state master_return break continue throw)))))
 
+;-----------------------------------------------------------------------------------------------------------------------------------------
+;Throw
+;-----------------------------------------------------------------------------------------------------------------------------------------
+
 ;Takes an expression and the M_state continuations and passes the value of the expression to the throw continuation
 (define handle_throw
   (lambda (expr boxed_state master_return break continue throw)
     (throw (M_value (first_rest expr) boxed_state master_return break continue throw))))
+
+;-----------------------------------------------------------------------------------------------------------------------------------------
+;Functions
+;-----------------------------------------------------------------------------------------------------------------------------------------
+
+;Takes a function, given by a name, a first line, and the rest of the function, and evaluates it in the input state. Returns to functino_return, throws to throw.
+(define evaluate_function
+  (lambda (name first_line rest_of_function boxed_state function_return throw)
+    (cond
+      ((and (null? first_line) (eq? name 'main)) (error "Main Function Completed Without A Return Statement"))
+      ((null? rest_of_function) (M_state first_line boxed_state function_return
+                                 (lambda (x) (error "Called break outside of a loop"))
+                                 (lambda (y) (error "Called continue outside of a loop"))
+                                 (lambda (z) throw)))
+      (else (begin
+              (M_state first_line boxed_state function_return
+                           (lambda (x) (error "Called break outside of a loop"))
+                           (lambda (y) (error "Called continue outside of a loop"))
+                           (lambda (z) throw))
+                   (evaluate_function name (first rest_of_function) (rest rest_of_function) boxed_state function_return throw))))))
 
 ;FUNCALL! NOT THAT THERE'S ANYTHING FUN ABOUT IT!
 ;Takes a function of the form (name parameters) and returns the result of evaluating it.
@@ -502,13 +463,6 @@
             (lambda (return_from_function)
               (evaluate_function name (first body) (rest body) (bind_parameters_in_scope parameter_names parameter_values name function_info scope) return_from_function throw))))))))
 
-;Takes a list of variables/values and the inputs to M_value and returns a list of M_value called on each of the elements of the input list.
-(define M_value_list
-  (lambda (inputs boxed_state master_return break continue throw) 
-    (cond
-      ((null? inputs) '())
-      (else (cons (M_value (first inputs) boxed_state master_return break continue throw) (M_value_list (rest inputs) boxed_state master_return break continue throw))))))
-
 ;Takes a list of parameter names, a list of parameter values, and the scope of a function. If the parameter lists are the same name, put each parameter value into a box,
 ;and add a new layer to the scope containing each parameter name bound to the box containing its respective value. Otherwise error.
 (define bind_parameters_in_scope
@@ -517,27 +471,13 @@
         (box (cons (list (cons name parameter_names) (cons (box function_info) (boxify parameter_values))) scope))
         (error "Incorrect number of parameters in function."))))
 
+;-----------------------------------------------------------------------------------------------------------------------------------------
+;Boxes
+;-----------------------------------------------------------------------------------------------------------------------------------------
+
 ;Takes a list and returns a same-sized list of the list entries, but in boxes
 (define boxify
   (lambda (l)
     (cond
       ((null? l) ())
       (else (cons (box (first l)) (boxify (rest l)))))))
-
-;Takes a function, given by a name, a first line, and the rest of the function, and evaluates it in the input state. Returns to functino_return, throws to throw.
-(define evaluate_function
-  (lambda (name first_line rest_of_function boxed_state function_return throw)
-    (cond
-      ((and (null? first_line) (eq? name 'main)) (error "Main Function Completed Without A Return Statement"))
-      ((null? rest_of_function) (M_state first_line boxed_state function_return
-                                 (lambda (x) (error "Called break outside of a loop"))
-                                 (lambda (y) (error "Called continue outside of a loop"))
-                                 (lambda (z) throw)))
-      (else (begin
-              (M_state first_line boxed_state function_return
-                           (lambda (x) (error "Called break outside of a loop"))
-                           (lambda (y) (error "Called continue outside of a loop"))
-                           (lambda (z) throw))
-                   (evaluate_function name (first rest_of_function) (rest rest_of_function) boxed_state function_return throw))))))
-    
-
