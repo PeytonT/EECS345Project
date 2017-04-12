@@ -1,3 +1,10 @@
+;EECS345 Programming Project Part 2
+;Professor Lewicki
+;Project Partners: Peyton Turner (dpt14), Jack La Rue (jvl13), and Jessie Adkins (jsa70) 
+;4/12/17
+;Language used: Pretty Big
+
+
 ;---------------------------------------------------------------------------------
 ;Abstractions of car/cdr
 ;---------------------------------------------------------------------------------
@@ -64,8 +71,75 @@
     (cdddr l)))
 
 ;---------------------------------------------------------------------------------
+;Operations
+;---------------------------------------------------------------------------------
+
+;Tells us if the expression is a math operation
+(define is_math_op?
+  (lambda (expr)
+    (cond
+      ((null? expr) #f)
+      ((atom? expr) #f)
+      ((eq? (first expr) '+) #t)
+      ((eq? (first expr) '-) #t)
+      ((eq? (first expr) '*) #t)
+      ((eq? (first expr) '/) #t)
+      ((eq? (first expr) '%) #t)
+      (else #f))))
+
+;If expression is a math operation, it returns the math operation
+(define get_math_op
+  (lambda (expr)
+    (cond
+      ((eq? (first expr) '+) +)
+      ((eq? (first expr) '-) -)
+      ((eq? (first expr) '*) *)
+      ((eq? (first expr) '/) quotient)
+      ((eq? (first expr) '%) modulo))))
+
+;Tells us if the expression is a boolean operation.
+(define is_bool_op?
+  (lambda (expr)
+    (cond
+      ((null? expr) #f)
+      ((atom? expr) #f)
+      ((eq? (first expr) '&&) #t)
+      ((eq? (first expr) '||) #t)
+      ((eq? (first expr) '!) #t)
+      ((eq? (first expr) '==) #t)
+      ((eq? (first expr) '!=) #t)
+      ((eq? (first expr) '<) #t)
+      ((eq? (first expr) '>) #t)
+      ((eq? (first expr) '<=) #t)
+      ((eq? (first expr) '>=) #t)
+      (else #f))))
+
+;If the expression is a boolean operation, it returns the appropriate operation.
+;(Not is handled in M_boolean.)
+(define get_bool_op
+  (lambda (expr)
+    (cond
+      ((eq? (first expr) '&&) and_error)
+      ((eq? (first expr) '||) or_error) 
+      ;((eq? (first expr) '!) not_error) This should never happen, since it should be caught in M_boolean
+      ((eq? (first expr) '==) eq_error) 
+      ((eq? (first expr) '!=) not_eq_error) 
+      ((eq? (first expr) '<) <_error) 
+      ((eq? (first expr) '>) >_error) 
+      ((eq? (first expr) '<=) <=_error) 
+      ((eq? (first expr) '>=) >=_error)))) 
+
+;---------------------------------------------------------------------------------
 ;Type Checks
 ;---------------------------------------------------------------------------------
+
+;Checks to see if inputted value is a primitive boolean.
+(define is_boolean?
+  (lambda (val)
+    (cond
+      ((null? val) #f)
+      ((or (eq? val #t) (eq? val #f)) #t)
+      (else #f))))      
 
 ;Checks if an object is an atom. Returns true if so.
 (define atom?
@@ -124,7 +198,8 @@
 ;Custom Errors
 ;---------------------------------------------------------------------------------
 
-;Takes two supposedly boolean inputs and ands them if they are actually booleans. Otherwise throws an error
+;Takes two supposedly boolean inputs and ands them if they are actually booleans.
+;Otherwise throws an error
 (define and_error
   (lambda (bool1 bool2)
     (cond
@@ -132,7 +207,8 @@
       ((and (is_boolean? bool1) (is_boolean? bool2)) (and bool1 bool2))
       (else (error "Attempted to treat a non-boolean as a boolean.")))))
 
-;Takes two supposedly boolean inputs and ors them if they are actually booleans. Otherwise throws an error
+;Takes two supposedly boolean inputs and ors them if they are actually booleans.
+;Otherwise throws an error
 (define or_error
   (lambda (bool1 bool2)
     (cond
@@ -140,7 +216,8 @@
       ((and (is_boolean? bool1) (is_boolean? bool2)) (or bool1 bool2))
       (else (error "Attempted to treat a non-boolean as a boolean.")))))
 
-;Takes two values and determines whether or not they are the same value. These values can be of type int or boolean.
+;Takes two values and determines whether or not they are the same value.
+;These values can be of type int or boolean.
 (define eq_error
   (lambda (val1 val2)
     (cond
@@ -148,7 +225,8 @@
       ((or (and (is_boolean? val1) (is_boolean? val2)) (and (not (is_boolean? val1)) (not (is_boolean? val2)))) (eq? val1 val2))
       (else (error "Values are of different types. Condition cannot be determined!")))))
 
-;Takes two values and determines whether or not they are not equal. These values can be of type int or boolean.
+;Takes two values and determines whether or not they are not equal.
+;These values can be of type int or boolean.
 (define not_eq_error
   (lambda (val1 val2)
     (cond
@@ -156,7 +234,8 @@
       ((or (and (is_boolean? val1) (is_boolean? val2)) (and (not (is_boolean? val1)) (not (is_boolean? val2)))) (not (eq? val1 val2)))
       (else (error "Values are of different types. Condition cannot be determined!")))))
 
-;Takes two values and determines whether or not val1 < val2. Values must be of type int.
+;Takes two values and determines whether or not val1 < val2.
+;Values must be of type int.
 (define <_error
   (lambda (val1 val2)
     (cond
@@ -164,7 +243,8 @@
       ((and (not (is_boolean? val1)) (not (is_boolean? val2))) (< val1 val2))
       (else (error "One value is not of type int. Condition cannot be determined!")))))
 
-;Takes two values and determines whether or not val1 > val2. Values must be of type int.
+;Takes two values and determines whether or not val1 > val2.
+;Values must be of type int.
 (define >_error
   (lambda (val1 val2)
     (cond
@@ -172,7 +252,8 @@
       ((and (not (is_boolean? val1)) (not (is_boolean? val2))) (> val1 val2))
       (else (error "One value is not of type int. Condition cannot be determined!")))))
 
-;Takes two values and determines whether or not val1 <= val2. Values must be of type int.
+;Takes two values and determines whether or not val1 <= val2.
+;Values must be of type int.
 (define <=_error
   (lambda (val1 val2)
     (cond
@@ -180,7 +261,8 @@
       ((and (not (is_boolean? val1)) (not (is_boolean? val2))) (<= val1 val2))
       (else (error "One value is not of type int. Condition cannot be determined!")))))
 
-;Takes two values and determines whether or not val1 >= val2. Values must be of type int.
+;Takes two values and determines whether or not val1 >= val2.
+;Values must be of type int.
 (define >=_error
   (lambda (val1 val2)
     (cond
