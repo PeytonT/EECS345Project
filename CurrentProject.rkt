@@ -14,7 +14,11 @@
 ;Once return has been called throughout the evaluation of the parse tree, call/cc will automatically take the continuation return value and output it into the interactions pane.
 (define interpret
   (lambda (filename)
-    (call/cc (lambda (return_from_interpret) ((evaluate (first (parser filename)) (rest (parser filename)) (empty_state_box) return_from_interpret))))))
+    (let ([output (call/cc (lambda (return_from_interpret) ((evaluate (first (parser filename)) (rest (parser filename)) (empty_state_box) return_from_interpret))))])
+      (cond
+        ((eq? output #t) 'true)
+        ((eq? output #f) 'false)
+        (else output)))))
 
 ;Takes the first expression, the rest of the parse tree, a boxed state, and the continuation return. If the first expression is null, an error is thrown, as a program cannot not have a return statement.
 ;If the rest of the program is null, then the first expression is passed on to M_State to be evaluated further. Otherwise, the function calls M_State on the first expression and recursively calls M_State
@@ -321,7 +325,6 @@
   (lambda (func boxed_state master_return break continue throw)
     (let ([state (unbox boxed_state)] [name (get_function_name func)] [parameters (get_function_params func)] [body (get_function_body func)])
       (set-box! boxed_state (cons (newfirsts name (box (list parameters state body)) (first state)) (rest state))))))
-;Currently does not handle recursive functions. Functions are not defined in their own scope. Must correct at some point.
 
 ;Gets the name of an input function expression.
 (define get_function_name
@@ -380,9 +383,7 @@
 ;terminates, as the final value of the continuation return has been found.
 (define return
   (lambda (value master_return)
-    (cond
-      ((is_boolean? value) (if value (master_return 'true) (master_return 'false)))
-      (else (master_return value)))))
+    (master_return value)))
 
 ;Takes an expression, containing a condition, a boxed state and the M_state contitions.
 ;If the condition is true in the state, the M_state is called on the first expression after the condition.
@@ -489,6 +490,7 @@
              [parameter_values (M_value_list (rest func) boxed_state master_return break continue throw)]
              [function_info (get_var_value_box name boxed_state)]
              [parameter_names (first function_info)]
+             ;Functions need to exist within their own scope so that they can recursively call themselves.
              [scope (first_of_rest function_info)]
              [body (first_of_rest_of_rest function_info)])
       (if (atom? function_info) (error "Attempted to reference a variable as a function.")
