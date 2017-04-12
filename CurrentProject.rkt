@@ -76,6 +76,7 @@
       ((is_boolean? expr) expr)
       ((atom? expr) (if (number? expr) expr (if (or (equal? expr 'true) (equal? expr 'false)) (if (equal? expr 'true) #t #f) (get_var_value_box expr boxed_state))))
       ((and (unary? expr) (eq? (first expr) '-)) (* -1 (M_value (first_of_rest expr) boxed_state master_return break continue throw)))
+      ;Calling M_state and M_value here is likely causing some sort of horrific problem with throws, since the throw should happen in both, but will expend the continuation on the first.
       ((eq? (first expr) '=) (begin
                                (M_state expr boxed_state master_return break continue throw)
                                (M_value (first_of_rest_of_rest expr) boxed_state master_return break continue throw)))
@@ -481,7 +482,7 @@
   (lambda (expr boxed_state master_return break continue throw)
     (throw (M_value (first_of_rest expr) boxed_state master_return break continue throw))))
 
-;FUNCALL! NOT THAT THERE'S ANYTHING FUN ABOUT!
+;FUNCALL! NOT THAT THERE'S ANYTHING FUN ABOUT IT!
 ;Takes a function of the form (name parameters) and returns the result of evaluating it.
 (define handle_function_call
   (lambda (func boxed_state master_return break continue throw)
