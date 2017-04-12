@@ -435,12 +435,12 @@
       ((null? rest_of_function) (M_state first_line boxed_state function_return
                                  (lambda (x) (error "Called break outside of a loop"))
                                  (lambda (y) (error "Called continue outside of a loop"))
-                                 (lambda (z) throw)))
+                                 throw))
       (else (begin
               (M_state first_line boxed_state function_return
                            (lambda (x) (error "Called break outside of a loop"))
                            (lambda (y) (error "Called continue outside of a loop"))
-                           (lambda (z) throw))
+                           throw)
                    (evaluate_function name (first rest_of_function) (rest rest_of_function) boxed_state function_return throw))))))
 
 ;FUNCALL! NOT THAT THERE'S ANYTHING FUN ABOUT IT!
