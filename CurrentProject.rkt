@@ -51,14 +51,14 @@
       ((atom? expr) )
       ((null? expr) )
       ;Handles the two possibilities of variable declaration, either assigning an empty list if now value is given, or the given value if a value is given.
-      ((eq? (first expr) 'var) (if (null? (rest_of_rest expr))
-                                   (handle_declare (first_of_rest expr) '() boxed_state master_return break continue throw)
-                                   (handle_declare (first_of_rest expr) (first_of_rest_of_rest expr) boxed_state master_return break continue throw)))
+      ((eq? (first expr) 'var) (if (null? (rest_rest expr))
+                                   (handle_declare (first_rest expr) '() boxed_state master_return break continue throw)
+                                   (handle_declare (first_rest expr) (first_rest_rest expr) boxed_state master_return break continue throw)))
       ((eq? (first expr) 'function) (handle_function_declare (rest expr) boxed_state master_return break continue throw))
-      ((eq? (first expr) '=) (handle_assign (first_of_rest expr) (first_of_rest_of_rest expr) boxed_state master_return break continue throw))
-      ((eq? (first expr) 'return) (return (M_value (first_of_rest expr) boxed_state master_return break continue throw) master_return))
+      ((eq? (first expr) '=) (handle_assign (first_rest expr) (first_rest_rest expr) boxed_state master_return break continue throw))
+      ((eq? (first expr) 'return) (return (M_value (first_rest expr) boxed_state master_return break continue throw) master_return))
       ((eq? (first expr) 'if) (if* (rest expr) boxed_state master_return break continue throw))
-      ((eq? (first expr) 'while) (call/cc (lambda (k) (while (first_of_rest expr) (first_of_rest_of_rest expr) boxed_state master_return k continue throw))))
+      ((eq? (first expr) 'while) (call/cc (lambda (k) (while (first_rest expr) (first_rest_rest expr) boxed_state master_return k continue throw))))
       ((eq? (first expr) 'break) (break (remove_top_layer boxed_state)))
       ((eq? (first expr) 'continue) (continue (remove_top_layer boxed_state)))
       ((eq? (first expr) 'begin) (handle_begin expr boxed_state master_return break continue throw))
@@ -75,15 +75,15 @@
     (cond
       ((is_boolean? expr) expr)
       ((atom? expr) (if (number? expr) expr (if (or (equal? expr 'true) (equal? expr 'false)) (if (equal? expr 'true) #t #f) (get_var_value_box expr boxed_state))))
-      ((and (unary? expr) (eq? (first expr) '-)) (* -1 (M_value (first_of_rest expr) boxed_state master_return break continue throw)))
+      ((and (unary? expr) (eq? (first expr) '-)) (* -1 (M_value (first_rest expr) boxed_state master_return break continue throw)))
       ;Calling M_state and M_value here is likely causing some sort of horrific problem with throws, since the throw should happen in both, but will expend the continuation on the first.
       ((eq? (first expr) '=) (begin
                                (M_state expr boxed_state master_return break continue throw)
-                               (M_value (first_of_rest_of_rest expr) boxed_state master_return break continue throw)))
+                               (M_value (first_rest_rest expr) boxed_state master_return break continue throw)))
       ((eq? (first expr) 'funcall) (handle_function_call (rest expr) boxed_state master_return break continue throw))
       ((is_math_op? expr) ((get_math_op expr)
-                           (M_value (first_of_rest expr) boxed_state master_return break continue throw)
-                           (M_value (first_of_rest_of_rest expr) boxed_state master_return break continue throw)))
+                           (M_value (first_rest expr) boxed_state master_return break continue throw)
+                           (M_value (first_rest_rest expr) boxed_state master_return break continue throw)))
       ((is_bool_op? expr) (M_boolean expr boxed_state master_return break continue throw))
       (else (error "You somehow called M_value on something without a value.")))))
 
@@ -94,10 +94,10 @@
     (cond
       ((is_boolean? expr) expr)
       ((atom? expr) (if (or (equal? expr 'true) (equal? expr 'false)) (if (equal? expr 'true) #t #f) (get_var_value_box expr boxed_state)))
-      ((and (unary? expr) (eq? (first expr) '!)) (not (M_boolean (first_of_rest expr) boxed_state master_return break continue throw)))
-      ((eq? (first expr) '=) (M_boolean (first_of_rest_of_rest expr) boxed_state master_return break continue throw))
-      ((is_bool_op? expr) ((get_bool_op expr) (M_value (first_of_rest expr) boxed_state master_return break continue throw)
-                                              (M_value (first_of_rest_of_rest expr) boxed_state master_return break continue throw)))
+      ((and (unary? expr) (eq? (first expr) '!)) (not (M_boolean (first_rest expr) boxed_state master_return break continue throw)))
+      ((eq? (first expr) '=) (M_boolean (first_rest_rest expr) boxed_state master_return break continue throw))
+      ((is_bool_op? expr) ((get_bool_op expr) (M_value (first_rest expr) boxed_state master_return break continue throw)
+                                              (M_value (first_rest_rest expr) boxed_state master_return break continue throw)))
       (else (error "You somehow called M_boolean on something without a boolean value.")))))
 
 ;Checks if an object is an atom. Returns true if so.
@@ -108,7 +108,7 @@
 ;Checks if an expression is unary. Returns true if so.
 (define unary?
   (lambda (expr)
-    (eq? (rest_of_rest expr) '())))
+    (eq? (rest_rest expr) '())))
 
 ;Creates an empty program state in a box
 (define empty_state_box
@@ -265,17 +265,17 @@
 ;Takes three inputs: two values and a list. Adds new first elements to a list of two lists.
 (define newfirsts
   (lambda (f1 f2 l)
-    (list (cons f1 (first l)) (cons f2 (first_of_rest l)))))
+    (list (cons f1 (first l)) (cons f2 (first_rest l)))))
 
 ;Takes an input list of two lists and returns a list of the first two elements of those lists
 (define getfirsts
   (lambda (l)
-    (cons (first_of_first l) (cons (first_of_first_of_rest l) '()))))
+    (cons (first_first l) (cons (first_first_rest l) '()))))
 
 ;Removes the first elements of the sublists of a list. Said list is comprised of two lists.
 (define removefirsts
   (lambda (l)
-    (list (rest_of_first l) (rest_of_first_of_rest l))))
+    (list (rest_first l) (rest_first_rest l))))
 
 ;Takes two inputs and makes them the first two values in the lists in an input list of two lists.
 (define replacefirsts
@@ -289,7 +289,7 @@
     (let ([state (unbox boxed_state)])
      (cond
       ((null? state) (error "Attempting to use an undeclared variable or function."))
-      ((first (get_var_value_layer var (first state))) (first_of_rest (get_var_value_layer var (first state))))
+      ((first (get_var_value_layer var (first state))) (first_rest (get_var_value_layer var (first state))))
       (else (get_var_value var (rest state)))))))
 
 ;Helper of get_var_value_box
@@ -298,7 +298,7 @@
   (lambda (var state)
     (cond
       ((null? state) (begin (write var) (error "Attempting to use an undeclared variable or function.")))
-      ((first (get_var_value_layer var (first state))) (first_of_rest (get_var_value_layer var (first state))))
+      ((first (get_var_value_layer var (first state))) (first_rest (get_var_value_layer var (first state))))
       (else (get_var_value var (rest state))))))
 
 ;Helper of get_var_value_box
@@ -307,7 +307,7 @@
   (lambda (var layer)
     (cond
       ((null? (first layer)) (list #f '()))
-      ((eq? var (first_of_first layer)) (if (not (null? (unbox (first_of_first_of_rest layer)))) (list #t (unbox (first_of_first_of_rest layer))) (error "Attempting to use unassigned variable.")))
+      ((eq? var (first_first layer)) (if (not (null? (unbox (first_first_rest layer)))) (list #t (unbox (first_first_rest layer))) (error "Attempting to use unassigned variable.")))
       (else (get_var_value_layer var (removefirsts layer))))))
 
 ;Takes a variable, a list containing a value, a state in a box, and the continuation return value and updates the state in the box to be
@@ -335,12 +335,12 @@
 ;Gets the parameter list of an input function expression.
 (define get_function_params
   (lambda (func)
-    (first_of_rest func)))
+    (first_rest func)))
 
 ;Gets the body of an input function expression.
 (define get_function_body
   (lambda (func)
-    (first_of_rest_of_rest func)))
+    (first_rest_rest func)))
 
 ;Takes a variable, an expression, a state in a box, and the continuation return and updates the boxed state to the state where the variable is assigned to the value
 ;of the expression if the variable is declared. Otherwise creates an error.
@@ -369,7 +369,7 @@
   (lambda (var layer)
     (cond
       ((null? (first layer)) #f)
-      ((eq? var (first_of_first layer)) #t)
+      ((eq? var (first_first layer)) #t)
       (else (in_layer var (removefirsts layer))))))
 
 ;Takes a variable and a layer and returns the box bound to the variable name, or errors if no such box exists.
@@ -377,7 +377,7 @@
   (lambda (var layer)
     (cond
       ((null? (first layer)) (error "Variable is being assigned before it has been declared."))
-      ((eq? var (first_of_first layer)) (first_of_first_of_rest layer))
+      ((eq? var (first_first layer)) (first_first_rest layer))
       (else (get_box_from_layer var (removefirsts layer))))))
 
 ;Takes an expression, a state, and the current continuation return value. The method then returns the value of the expression in the state. Once return is called, the program
@@ -393,8 +393,8 @@
   (lambda (expr boxed_state master_return break continue throw)
     (letrec ([truth (M_boolean (first expr) boxed_state master_return break continue throw)])
       (cond
-        ((eq? truth #t) (M_state (first_of_rest expr) boxed_state master_return break continue throw))
-        ((and (eq? truth #f) (not (eq? (rest_of_rest expr) '()))) (M_state (first_of_rest_of_rest expr) boxed_state master_return break continue throw))))))
+        ((eq? truth #t) (M_state (first_rest expr) boxed_state master_return break continue throw))
+        ((and (eq? truth #f) (not (eq? (rest_rest expr) '()))) (M_state (first_rest_rest expr) boxed_state master_return break continue throw))))))
 
 ;Takes a condition, a loop body, a boxed state, and the M_state conditions.
 ;If the condition is true in the state, it recursively calls itself on the condition, the loop body, the continuations,
@@ -417,7 +417,7 @@
     (cond
       ((null? (rest expr)))
       (else
-        (M_state (first_of_rest expr) boxed_state master_return break continue throw)
+        (M_state (first_rest expr) boxed_state master_return break continue throw)
         (begin_helper (rest expr) boxed_state master_return break continue throw)))))
 
 ;Takes an expression in the form of a try statement and the M_state continuations and calls M_state on the body of the try block.
@@ -425,16 +425,16 @@
 ;If no exception is raised, calls M_state on the finally block.
 (define handle_try
   (lambda (expr boxed_state master_return break continue throw)
-    (letrec ([result (call/cc (lambda (k) (try_helper (first_of_rest expr) boxed_state master_return break continue k)))])
+    (letrec ([result (call/cc (lambda (k) (try_helper (first_rest expr) boxed_state master_return break continue k)))])
       (cond
-        ((eq? result (void)) (M_state (first (rest_of_rest_of_rest expr)) boxed_state master_return break continue throw))
+        ((eq? result (void)) (M_state (first (rest_rest_rest expr)) boxed_state master_return break continue throw))
         (else
          ;I have made the implementation decision that exceptions are declared as variables.
          ;Giving an exception a name that a variable already has will produce an error.
          ;In principle a user could access an exception outside of the catch block in which it was created.
-         (handle_declare (first_of_first_of_rest (first_of_rest_of_rest expr)) result boxed_state master_return break continue throw)
-         (M_state (first_of_rest_of_rest expr) boxed_state master_return break continue throw)
-         (M_state (first (rest_of_rest_of_rest expr)) boxed_state master_return break continue throw))))))
+         (handle_declare (first_first_rest (first_rest_rest expr)) result boxed_state master_return break continue throw)
+         (M_state (first_rest_rest expr) boxed_state master_return break continue throw)
+         (M_state (first (rest_rest_rest expr)) boxed_state master_return break continue throw))))))
 
 ;Recursively calls M_state on the first entry of the input expression until it has exhausted the list
 (define try_helper
@@ -450,7 +450,7 @@
   (lambda (expr boxed_state master_return break continue throw)
     (cond
       ((null? expr) (void))
-      (else (catch_helper (first_of_rest_of_rest expr) boxed_state master_return break continue throw)))))
+      (else (catch_helper (first_rest_rest expr) boxed_state master_return break continue throw)))))
 
 ;Recursively calls M_state on the first entry of the input expression until it has exhausted the list
 (define catch_helper
@@ -466,7 +466,7 @@
   (lambda (expr boxed_state master_return break continue throw)
     (cond
       ((null? expr) )
-      (else (finally_helper (first_of_rest expr) boxed_state master_return break continue throw)))))
+      (else (finally_helper (first_rest expr) boxed_state master_return break continue throw)))))
 
 ;Recursively calls M_state on the first entry of the input expression until it has exhausted the list
 (define finally_helper
@@ -480,7 +480,7 @@
 ;Takes an expression and the M_state continuations and passes the value of the expression to the throw continuation
 (define handle_throw
   (lambda (expr boxed_state master_return break continue throw)
-    (throw (M_value (first_of_rest expr) boxed_state master_return break continue throw))))
+    (throw (M_value (first_rest expr) boxed_state master_return break continue throw))))
 
 ;FUNCALL! NOT THAT THERE'S ANYTHING FUN ABOUT IT!
 ;Takes a function of the form (name parameters) and returns the result of evaluating it.
@@ -492,8 +492,8 @@
              [function_info (get_var_value_box name boxed_state)]
              [parameter_names (first function_info)]
              ;Functions need to exist within their own scope so that they can recursively call themselves.
-             [scope (first_of_rest function_info)]
-             [body (first_of_rest_of_rest function_info)])
+             [scope (first_rest function_info)]
+             [body (first_rest_rest function_info)])
       (if (atom? function_info) (error "Attempted to reference a variable as a function.")
           ;Main gets called with the master return, other functions get called with the call/cc return.
           (if (eq? name 'main)
