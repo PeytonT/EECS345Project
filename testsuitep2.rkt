@@ -4,7 +4,7 @@
 ;4/10/17
 ;Language used: Pretty Big
 
-;Methods that result in errors for Project 2: 5, 11, 12, 13, 19
+;Tests that result in errors for Project 2: 5, 11, 12, 13, 19
 
 ;Works only when simpleParser is loaded into interpret.
 (load "simpleParser.scm")

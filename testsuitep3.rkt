@@ -4,7 +4,7 @@
 ;4/10/17
 ;Language used: Pretty Big
 
-;Methods that result in errors for Project 3: 12, 17
+;Tests that result in errors for Project 3: 12, 17
 
 ;Works only when functionParser is loaded into interpret.
 (load "functionParser.scm")
