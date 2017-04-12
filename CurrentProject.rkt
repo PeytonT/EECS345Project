@@ -1,7 +1,7 @@
 ;EECS345 Programming Project Part 2
 ;Professor Lewicki
-;Project Partners: Peyton Turner (dpt14) and Jack La Rue (jvl13)
-;4/10/17
+;Project Partners: Peyton Turner (dpt14), Jack La Rue (jvl13), and Jessie Adkins (jsa70) 
+;4/12/17
 ;Language used: Pretty Big
 (load "functionParser.scm")
 
