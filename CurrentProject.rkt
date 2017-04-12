@@ -496,10 +496,10 @@
       (if (atom? function_info) (error "Attempted to reference a variable as a function.")
           ;Main gets called with the master return, other functions get called with the call/cc return.
           (if (eq? name 'main)
-              (evaluate_function name (first body) (rest body) (bind_parameters_in_scope parameter_names parameter_values scope) master_return throw)
+              (evaluate_function name (first body) (rest body) (bind_parameters_in_scope parameter_names parameter_values name function_info scope) master_return throw)
            (call/cc
             (lambda (return_from_function)
-              (evaluate_function name (first body) (rest body) (bind_parameters_in_scope parameter_names parameter_values scope) return_from_function throw))))))))
+              (evaluate_function name (first body) (rest body) (bind_parameters_in_scope parameter_names parameter_values name function_info scope) return_from_function throw))))))))
 
 ;Takes a list of variables/values and the inputs to M_value and returns a list of M_value called on each of the elements of the input list.
 (define M_value_list
@@ -511,9 +511,9 @@
 ;Takes a list of parameter names, a list of parameter values, and the scope of a function. If the parameter lists are the same name, put each parameter value into a box,
 ;and add a new layer to the scope containing each parameter name bound to the box containing its respective value. Otherwise error.
 (define bind_parameters_in_scope
-  (lambda (parameter_names parameter_values scope)
+  (lambda (parameter_names parameter_values name function_info scope)
     (if (eq? (length parameter_names) (length parameter_values))
-        (box (cons (list parameter_names (boxify parameter_values)) scope))
+        (box (cons (list (cons name parameter_names) (cons (box function_info) (boxify parameter_values))) scope))
         (error "Incorrect number of parameters in function."))))
 
 ;Takes a list and returns a same-sized list of the list entries, but in boxes

@@ -35,17 +35,17 @@
   (lambda (list)
     (cond
       ((eq? 45 (interpret "testing/p3/test3.txt"))
-       (testsuite5 (cons '("Test 3 passes") list)))
+       (testsuite4 (cons '("Test 3 passes") list)))
       (else
-       (testsuite5 (cons '("Test 3 fails") list))))))
+       (testsuite4 (cons '("Test 3 fails") list))))))
 
-;(define testsuite4
- ; (lambda (list)
-  ;  (cond
-   ;   ((eq? 55 (interpret "testing/p3/test4.txt"))
-    ;   (testsuite5 (cons '("Test 4 passes") list)))
-     ; (else
-      ; (testsuite5 (cons '("Test 4 fails") list))))))
+(define testsuite4
+  (lambda (list)
+    (cond
+      ((eq? 55 (interpret "testing/p3/test4.txt"))
+       (testsuite5 (cons '("Test 4 passes") list)))
+      (else
+       (testsuite5 (cons '("Test 4 fails") list))))))
 
 (define testsuite5
   (lambda (list)
@@ -127,17 +127,17 @@
   (lambda (list)
     (cond
       ((eq? 87 (interpret "testing/p3/test15.txt"))
-       (testsuite17 (cons '("Test 15 passes") list)))
+       (testsuite16 (cons '("Test 15 passes") list)))
       (else
-       (testsuite17 (cons '("Test 15 fails") list))))))
+       (testsuite16 (cons '("Test 15 fails") list))))))
 
-;(define testsuite16
- ; (lambda (list)
-  ;  (cond
-   ;   ((eq? 64 (interpret "testing/p3/test16.txt"))
-    ;   (testsuite17 (cons '("Test 16 passes") list)))
-     ; (else
-      ; (testsuite17 (cons '("Test 16 fails") list))))))
+(define testsuite16
+  (lambda (list)
+    (cond
+      ((eq? 64 (interpret "testing/p3/test16.txt"))
+       (testsuite17 (cons '("Test 16 passes") list)))
+      (else
+       (testsuite17 (cons '("Test 16 fails") list))))))
 
 (define testsuite17
   (lambda (list)
