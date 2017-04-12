@@ -1,20 +1,24 @@
 ;EECS345 Test Suite P3
 ;Professor Lewicki
-;Project Partners: Peyton Turner (dpt14) and Jack La Rue (jvl13)
+;Project Partners: Peyton Turner (dpt14), Jack La Rue (jvl13), and Jessie Adkins (jsa70) 
 ;4/10/17
 ;Language used: Pretty Big
 
-;Errors in Project 3: 12, 17
+;Methods that result in errors for Project 3: 12, 17
 
+;Works only when functionParser is loaded into interpret.
 (load "functionParser.scm")
-(load "CurrentProject.rkt")
+(load "interpret.rkt")
 
 (require racket/trace)
 
+;This method takes a file and individually tests said file. for example, if the file = "testing/p3/test4.txt", then interpret would be called on said file.
+;This was specifically implemented with error functions in mind. Use this function to test tests 12 and 17.
 (define testfunc
   (lambda (file)
     (interpret file)))
 
+;Test suite for Project 3. Takes an EMPTY list and prints the results of all tests that should correctly return a non-error value (i.e. return an integer or boolean). 
 (define testsuiteP3
   (lambda (list)
     (cond

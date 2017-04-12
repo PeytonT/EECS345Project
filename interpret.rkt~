@@ -1,11 +1,8 @@
-;EECS345 Programming Project Part 3
+;EECS345 Programming Project Part 2
 ;Professor Lewicki
 ;Project Partners: Peyton Turner (dpt14), Jack La Rue (jvl13), and Jessie Adkins (jsa70) 
 ;4/12/17
 ;Language used: Pretty Big
-
-;Currently, we have functionParser, which will only work with the test cases for project 3.
-;If test cases from project 2 need to be tested, simply swith "functionParser.scm" to "simpleParser.scm".
 (load "functionParser.scm")
 
 (require racket/trace)
