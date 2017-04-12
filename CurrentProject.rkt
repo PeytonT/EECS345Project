@@ -206,7 +206,7 @@
   (lambda (var boxed_state)
     (let ([state (unbox boxed_state)])
      (cond
-      ((null? state) (error "Attempting to use an undeclared variable or function."))
+      ((null? state) (error "Attempting to use a variable or function not declared in the current scope."))
       ((first (get_var_value_layer var (first state))) (first_rest (get_var_value_layer var (first state))))
       (else (get_var_value var (rest state)))))))
 
@@ -215,7 +215,7 @@
 (define get_var_value
   (lambda (var state)
     (cond
-      ((null? state) (begin (write var) (error "Attempting to use an undeclared variable or function.")))
+      ((null? state) (begin (write var) (error "Attempting to use a variable or function not declared in the current scope.")))
       ((first (get_var_value_layer var (first state))) (first_rest (get_var_value_layer var (first state))))
       (else (get_var_value var (rest state))))))
 
@@ -267,14 +267,14 @@
   (lambda (var value boxed_state)
     (let ([state (unbox boxed_state)])
       (cond
-        ((null? state) (error "Variable is being assigned before it has been declared."))
+        ((null? state) (error "Variable is being assigned but does not exist in the current scope."))
         (else (update_state var value state))))))
 
 ;Takes a variable, a value, and a state and sets the value of that variable in the state to be the given value. Works on layer states.
 (define update_state
   (lambda (var value state)
     (cond
-      ((null? state) (error "Variable is being assigned before it has been declared."))
+      ((null? state) (error "Variable is being assigned but does not exist in the current scope."))
       ((in_layer var (first state)) (set-box! (get_box_from_layer var (first state)) value))
       (else (update_state var value (rest state))))))
 
@@ -293,7 +293,7 @@
 (define get_box_from_layer
   (lambda (var layer)
     (cond
-      ((null? (first layer)) (error "Variable is being assigned before it has been declared."))
+      ((null? (first layer)) (error "Variable is being assigned but does not exist in the current scope."))
       ((eq? var (first_first layer)) (first_first_rest layer))
       (else (get_box_from_layer var (removefirsts layer))))))
 
