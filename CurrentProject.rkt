@@ -280,7 +280,7 @@
 ;-----------------------------------------------------------------------------------------------------------------------------------------
 
 ;Takes a function, given by a name, a first line, and the rest of the function, and evaluates it in the input state.
-;Returns to functino_return, throws to throw.
+;Returns to function_return, throws to throw.
 (define evaluate_function
   (lambda (name first_line rest_of_function boxed_state function_return throw)
     (cond

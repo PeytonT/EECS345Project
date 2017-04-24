@@ -25,13 +25,13 @@
 (define evaluate_class
   (lambda (first_line rest_of_program boxed_state master_return)
     (cond
-      ((null? first_line) boxed_state)
+      ((null? first_line) (set-box! boxed_state (first (unbox boxed_state))))
       ((null? rest_of_program) (begin
                                  (M_state first_line boxed_state master_return
                                           (lambda (x) (error "Called break outside of a loop"))
                                           (lambda (y) (error "Called continue outside of a loop"))
                                           (lambda (z) (error "Threw an exception outside of a try block")))
-                                 boxed_state))
+                                 (set-box! boxed_state (first (unbox boxed_state)))))
       (else (begin
               (M_state first_line boxed_state master_return
                            (lambda (x) (error "Called break outside of a loop"))
@@ -39,9 +39,19 @@
                            (lambda (z) (error "Threw an exception outside of a try block")))
                    (evaluate_class (first rest_of_program) (rest rest_of_program) boxed_state master_return))))))
 
-;Contextualize takes a state and copies the state of the last function declared in the state to each other function in the state.
+;Contextualize takes a state and copies the state into the context of each function in the state.
 (define contextualize
-  (lambda 
+  (lambda (boxed_state)
+    (set-box! boxed_state (replace_contexts boxed_state (unbox boxed_state)))))
+
+(define replace_contexts
+  (lambda (boxed_state current_state)
+    (cond
+      ((null? (first current_state)) '(()()))
+      (else (letrec ([top_L (first_first current_state)] [top_R (unbox (first_first_rest current_state))])
+              (if (and (not (atom? top_R)) (eq? (length top_R) 3))
+                  (newfirsts top_L (list (first top_R) boxed_state (first_rest_rest top_R)) (replace_contexts boxed_state (removefirsts current_state)))
+                  (newfirsts top_L top_R (replace_contexts boxed_state (removefirsts current_state)))))))))
 
 ;Returns unboxed states because we don't want to actually modify the state stored in the CDT
 (define state_from_form
@@ -56,4 +66,7 @@
 
 (define declareAllClasses
   (lambda (CDT parse_list)
-    ()))
+    (cond
+      ((null? parse_list) )
+      (else (letrec ([parse (first parse_list)] [parentName (parentsName parse)] [parentForm (getForm parentName (unbox CDT))])
+              (begin (set-box! CDT (cons (declareClass parentName parentForm parse) (unbox CDT))) (declareAllClasses CDT (rest parse_list))))))))
