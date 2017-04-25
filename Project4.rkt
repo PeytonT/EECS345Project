@@ -7,6 +7,10 @@
 (include "CurrentProject.rkt")
 (load "classParser.scm")
 
+(define copyState
+  (lambda (state)
+    (box (unbox state))))
+
 (define createClassList
   (lambda ()
     (box (list (list 'Object) (list (void) (box (list () ())))))))
@@ -25,13 +29,13 @@
 (define evaluate_class
   (lambda (first_line rest_of_program boxed_state master_return)
     (cond
-      ((null? first_line) (set-box! boxed_state (first (unbox boxed_state))))
+      ((null? first_line) (copyState boxed_state))
       ((null? rest_of_program) (begin
                                  (M_state first_line boxed_state master_return
                                           (lambda (x) (error "Called break outside of a loop"))
                                           (lambda (y) (error "Called continue outside of a loop"))
                                           (lambda (z) (error "Threw an exception outside of a try block")))
-                                 (set-box! boxed_state (first (unbox boxed_state)))))
+                                (copyState boxed_state)))
       (else (begin
               (M_state first_line boxed_state master_return
                            (lambda (x) (error "Called break outside of a loop"))
@@ -53,10 +57,9 @@
                   (newfirsts top_L (list (first top_R) boxed_state (first_rest_rest top_R)) (replace_contexts boxed_state (removefirsts current_state)))
                   (newfirsts top_L top_R (replace_contexts boxed_state (removefirsts current_state)))))))))
 
-;Returns unboxed states because we don't want to actually modify the state stored in the CDT
 (define state_from_form
   (lambda (form)
-    (unbox (first_rest form))))
+    (copyState (first_rest form))))
 
 (define declareClass
   (lambda (parent_name parent_form parse)
