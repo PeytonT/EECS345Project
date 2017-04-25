@@ -46,7 +46,7 @@
 ;Contextualize takes a state and copies the state into the context of each function in the state.
 (define contextualize
   (lambda (boxed_state)
-    (set-box! boxed_state (replace_contexts boxed_state (unbox boxed_state)))))
+    (set-box! boxed_state (replace_contexts boxed_state (first (unbox boxed_state))))))
 
 (define replace_contexts
   (lambda (boxed_state current_state)
