@@ -7,6 +7,12 @@
 (include "CurrentProject.rkt")
 (load "classParser.scm")
 
+
+
+;General Project Notes:
+;Empty states shall have the format: ((() ()))
+
+
 (define copyState
   (lambda (state)
     (box (unbox state))))

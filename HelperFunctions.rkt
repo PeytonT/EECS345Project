@@ -5,6 +5,11 @@
 ;Language used: Pretty Big
 
 
+
+;General Project Notes:
+;Empty states shall have the format: ((() ()))
+
+
 ;---------------------------------------------------------------------------------
 ;Abstractions of car/cdr
 ;---------------------------------------------------------------------------------

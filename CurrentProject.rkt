@@ -8,6 +8,10 @@
 (require racket/trace)
 (include "HelperFunctions.rkt")
 
+;General Project Notes:
+;Empty states shall have the format: ((() ()))
+
+
 ;Takes a file from the local directory and, using simpleParser, generates a parse tree (in list format) of the text in the file.
 ;The parse tree modifies the text of the original document such that it is made suitable for scheme
 ;(for example, if one line was "x + y;", then simpleParser would generate said expression as (+ x y).
