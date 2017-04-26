@@ -17,9 +17,15 @@
   (lambda (state)
     (box (unbox state))))
 
-(define createClassList
+;The CDT is the class declaration table, it stores each of the classes defined in the file in the format ((names) (class_formats)),
+;where a class format is of the form (parent_name (box containing the associated state))
+(define createCDT
   (lambda ()
-    (box (list (list 'Object) (list (void) (box (list () ())))))))
+    (box (list (list 'Object) (list (void) (empty_state_box))))))
+
+(define getName
+  (lambda (parse)
+    (first_rest parse)))
 
 (define parentsName 
   (lambda (parse)
@@ -27,6 +33,7 @@
         'Object 
         (first_rest (first_rest_rest parse))))) 
 
+;Unusually, getForm takes an unboxed CDT because it recursively calls itself.
 (define getForm  
   (lambda (name unboxed_CDT)
     (cond
@@ -54,7 +61,7 @@
 ;Contextualize takes a state and copies the state into the context of each function in the state.
 (define contextualize 
   (lambda (boxed_state)
-    (set-box! boxed_state (replace_contexts boxed_state (first (unbox boxed_state))))))
+    (set-box! boxed_state (list (replace_contexts boxed_state (first (unbox boxed_state)))))))
 
 (define replace_contexts 
   (lambda (boxed_state current_state)
@@ -71,14 +78,28 @@
 
 (define declareClass
   (lambda (parent_name parent_form parse)
-    (let
-        ([body (first (rest_rest_rest parse))]) 
-      (list parent_name (evaluate_class (first body) (rest body) (state_from_form parent_form) (lambda (x)
-                                                                                                 (error "Called return in a class body.")))))))
+    (display parent_name)
+    (newline)
+    (display parent_form)
+    (newline)
+    (display parse)
+    (newline)
+    (letrec
+        ([body (first (rest_rest_rest parse))]
+         [state (copyState (first_rest parent_form))]
+         [temp1_does_nothing (evaluate_class (first body) (rest body) state (lambda (x) (error "Wat")))]
+         [temp2_does_nothing (contextualize state)])
+      (list parent_name state))))
 
 (define declareAllClasses
   (lambda (CDT parse_list)
     (cond
       ((null? parse_list) ) ;we want it to return nothing, just fill the CDT 
-      (else (letrec ([parse (first parse_list)] [parentName (parentsName parse)] [parentForm (getForm parentName (unbox CDT))])
-              (begin (set-box! CDT (cons (declareClass parentName parentForm parse) (unbox CDT))) (declareAllClasses CDT (rest parse_list))))))))
+      (else
+       (letrec (
+                [parse (first parse_list)]
+                [name (getName parse)]
+                [parentName (parentsName parse)]
+                [parentForm (getForm parentName (unbox CDT))]
+                [class (declareClass parentName parentForm parse)])
+              (begin (set-box! CDT (newfirsts name class (unbox CDT))) (declareAllClasses CDT (rest parse_list))))))))
