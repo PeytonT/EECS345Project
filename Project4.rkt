@@ -67,11 +67,10 @@
   (lambda (boxed_state current_state)
     (cond
       ((null? (first current_state)) '(()()))
-      (else (begin (display (first_first current_state)) (newline) (display (first_first_rest current_state)) (newline)
-              (letrec ([top_L (first_first current_state)] [top_R (unbox (first_first_rest current_state))])
+      (else (letrec ([top_L (first_first current_state)] [top_R (unbox (first_first_rest current_state))])
               (if (and (not (atom? top_R)) (eq? (length top_R) 3))
-                  (newfirsts top_L (list (first top_R) boxed_state (first_rest_rest top_R)) (replace_contexts boxed_state (removefirsts current_state)))
-                  (newfirsts top_L top_R (replace_contexts boxed_state (removefirsts current_state))))))))))
+                  (newfirsts top_L (box (list (first top_R) boxed_state (first_rest_rest top_R))) (replace_contexts boxed_state (removefirsts current_state)))
+                  (newfirsts top_L (box top_R) (replace_contexts boxed_state (removefirsts current_state)))))))))
 
 (define state_from_form 
   (lambda (form)
@@ -94,6 +93,7 @@
 
 (define declareAllClasses
   (lambda (CDT parse_list)
+    (display CDT) (newline)
     (cond
       ((null? parse_list) ) ;we want it to return nothing, just fill the CDT 
       (else
@@ -103,5 +103,4 @@
                 [parentName (parentsName parse)]
                 [parentForm (getForm parentName (unbox CDT))]
                 [class (declareClass parentName parentForm parse)])
-              (begin ;(display (newfirsts name class (unbox CDT)))
-                (set-box! CDT (newfirsts name class (unbox CDT))) (declareAllClasses CDT (rest parse_list))))))))
+                (set-box! CDT (newfirsts name class (unbox CDT))) (declareAllClasses CDT (rest parse_list)))))))
