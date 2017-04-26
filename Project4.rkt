@@ -21,7 +21,7 @@
 ;where a class format is of the form (parent_name (box containing the associated state))
 (define createCDT
   (lambda ()
-    (box (list (list 'Object) (list (void) (empty_state_box))))))
+    (box (list (list 'Object) (list (list (void) (empty_state_box)))))))
 
 (define getName
   (lambda (parse)
@@ -38,7 +38,7 @@
   (lambda (name unboxed_CDT)
     (cond
       ((null? (first unboxed_CDT)) (error "A class was extended that has not been declared."))
-      ((eq? name (first_first unboxed_CDT)) (first_rest unboxed_CDT))
+      ((eq? name (first_first unboxed_CDT)) (first_first_rest unboxed_CDT))
       (else (getForm name (removefirsts unboxed_CDT))))))
 
 (define evaluate_class 
@@ -67,10 +67,11 @@
   (lambda (boxed_state current_state)
     (cond
       ((null? (first current_state)) '(()()))
-      (else (letrec ([top_L (first_first current_state)] [top_R (unbox (first_first_rest current_state))])
+      (else (begin (display (first_first current_state)) (newline) (display (first_first_rest current_state)) (newline)
+              (letrec ([top_L (first_first current_state)] [top_R (unbox (first_first_rest current_state))])
               (if (and (not (atom? top_R)) (eq? (length top_R) 3))
                   (newfirsts top_L (list (first top_R) boxed_state (first_rest_rest top_R)) (replace_contexts boxed_state (removefirsts current_state)))
-                  (newfirsts top_L top_R (replace_contexts boxed_state (removefirsts current_state)))))))))
+                  (newfirsts top_L top_R (replace_contexts boxed_state (removefirsts current_state))))))))))
 
 (define state_from_form 
   (lambda (form)
@@ -78,12 +79,12 @@
 
 (define declareClass
   (lambda (parent_name parent_form parse)
-    (display parent_name)
-    (newline)
-    (display parent_form)
-    (newline)
-    (display parse)
-    (newline)
+   ; (display parent_name)
+   ; (newline)
+   ; (display parent_form)
+   ; (newline)
+   ; (display parse)
+   ; (newline)
     (letrec
         ([body (first (rest_rest_rest parse))]
          [state (copyState (first_rest parent_form))]
@@ -102,4 +103,5 @@
                 [parentName (parentsName parse)]
                 [parentForm (getForm parentName (unbox CDT))]
                 [class (declareClass parentName parentForm parse)])
-              (begin (set-box! CDT (newfirsts name class (unbox CDT))) (declareAllClasses CDT (rest parse_list))))))))
+              (begin ;(display (newfirsts name class (unbox CDT)))
+                (set-box! CDT (newfirsts name class (unbox CDT))) (declareAllClasses CDT (rest parse_list))))))))
