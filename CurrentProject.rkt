@@ -82,7 +82,8 @@
       ((eq? (first expr) 'throw) (handle_throw expr boxed_state master_return break continue throw))
       ((eq? (first expr) 'catch) (handle_catch expr boxed_state master_return break continue throw))
       ((eq? (first expr) 'finally) (handle_finally expr boxed_state master_return break continue throw))
-      ((eq? (first expr) 'funcall) (handle_function_call (rest expr) boxed_state master_return break continue throw)))))
+      ((eq? (first expr) 'funcall) (handle_function_call (rest expr) boxed_state master_return break continue throw))
+      ((eq? (first expr) 'static-function) (handle_function_declare (rest expr) boxed_state master_return break continue throw)))))
      
 ;Takes an expression, a state, and the continuation return and returns the value of the expression evaluated in the given state.
 ;The evaluated expressions in M_value use math operators (i.e. + _ * / %) to produce/declare/assign values. The expression may contain assignments.
