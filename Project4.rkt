@@ -432,7 +432,7 @@
 (define bind_parameters_in_scope 
   (lambda (parameter_names parameter_values scope)
     (if (eq? (length parameter_names) (length parameter_values))
-        (box (cons (list parameter_names (boxify parameter_values)) scope))
+        (set-box! scope (cons (list (list parameter_names) (boxify parameter_values)) (unbox scope)))
         (error "Incorrect number of parameters in function."))))
 
 ;Takes a function, given by a name, a first line, and the rest of the function, and evaluates it in the input state.
