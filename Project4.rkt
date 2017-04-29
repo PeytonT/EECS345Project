@@ -177,7 +177,8 @@
       ((eq? (first expr) 'finally) (handle_finally_CDT expr CDT boxed_state master_return break continue throw))
       ((eq? (first expr) 'funcall) (handle_function_call_CDT (rest expr) CDT boxed_state master_return break continue throw))
       ((eq? (first expr) 'static-function) (handle_function_declare_CDT (rest expr) CDT boxed_state master_return break continue throw))
-      ((eq? (first expr) 'new) (handle_new_class_instance (first_rest expr) CDT)))))
+      ((eq? (first expr) 'new) (M_value_CDT expr CDT boxed_state master_return break continue throw))
+      ((eq? (first expr) 'dot) (M_value_CDT expr CDT boxed_state master_return break continue throw)))))
 
 ;Takes an expression, a CDT, a state, and the continuation return and returns the value of the expression evaluated in the given state.
 ;The evaluated expressions in M_value use math operators (i.e. + _ * / %) to produce/declare/assign values. The expression may contain assignments.
@@ -203,6 +204,8 @@
                            (M_value (first_rest_rest expr) boxed_state master_return break continue throw)))
       ((is_bool_op? expr) (M_boolean expr boxed_state master_return break continue throw))
       ((eq? (first expr) 'new) (handle_new_class_instance (first_rest expr) CDT))
+      ((eq? (first expr) 'dot) (handle_dot (get_class_from_var_or_expr (first_rest expr) CDT boxed_state master_return break continue throw)
+                                           (first_rest_rest expr) CDT boxed_state master_return break continue throw))
       (else (error "You somehow called M_value on something without a value.")))))
 
 ;Takes an expression, a state, and the continuation return and returns the boolean value of the expression evaluated in the given state.
@@ -242,7 +245,7 @@
     (let ([state (unbox boxed_state)])
       (cond
         ((null? value) (set-box! boxed_state (cons (newfirsts var (box value) (first state)) (rest state))))
-        (else (set-box! boxed_state (cons (newfirsts var (box (M_value_CDT value boxed_state master_return break continue throw)) (first state)) (rest state))))))))
+        (else (set-box! boxed_state (cons (newfirsts var (box (M_value_CDT value CDT boxed_state master_return break continue throw)) (first state)) (rest state))))))))
 
 ;Takes a function expression (name (parameters) (body)) and binds it in the state.
 ;The binding of a function looks much like the binding of a variable,
@@ -380,6 +383,58 @@
 ;Functions
 ;-----------------------------------------------------------------------------------------------------------------------------------------
 
+;Takes a function of the form (name/expr parameters) and returns the result of evaluating it.
+(define handle_function_call_CDT
+  (lambda (func CDT boxed_state master_return break continue throw)
+    (display func)
+    (newline)
+    (if
+     (list? (first func))
+      (letrec (
+               [name 'not_main]
+               [parameter_values (M_value_list (rest func) boxed_state master_return break continue throw)]
+               [function_info (M_value_CDT (first func) CDT boxed_state master_return break continue throw)]
+               [parameter_names (first function_info)]
+               [scope (first_rest function_info)]
+               [body (first_rest_rest function_info)])
+        (if (atom? function_info)
+            (error "Attempted to reference a variable as a function.")
+            ;Main gets called with the master return, other functions get called with the call/cc return.
+            (if (eq? name 'main)
+                (evaluate_function_CDT name (first body) (rest body) CDT
+                                       (bind_parameters_in_scope parameter_names parameter_values scope) master_return throw)
+                (call/cc
+                 (lambda (return_from_function)
+                   (evaluate_function_CDT name (first body) (rest body) CDT
+                                          (bind_parameters_in_scope parameter_names parameter_values scope) return_from_function throw))))))
+      (letrec (
+               [name (first func)]
+               [parameter_values (M_value_list (rest func) boxed_state master_return break continue throw)]
+               [function_info (get_var_value_box name boxed_state)]
+               [parameter_names (first function_info)]
+               [scope (first_rest function_info)]
+               [body (first_rest_rest function_info)])
+        (if (atom? function_info)
+            (error "Attempted to reference a variable as a function.")
+            ;Main gets called with the master return, other functions get called with the call/cc return.
+            (if (eq? name 'main)
+                (evaluate_function_CDT name (first body) (rest body) CDT
+                                       (bind_parameters_in_scope parameter_names parameter_values scope) master_return throw)
+                (call/cc
+                 (lambda (return_from_function)
+                   (evaluate_function_CDT name (first body) (rest body) CDT
+                                          (bind_parameters_in_scope parameter_names parameter_values scope) return_from_function throw)))))))))
+
+;Takes a list of parameter names, a list of parameter values, and the scope of a function.
+;If the parameter lists are the same length, put each parameter value into a box,
+;and add a new layer to the scope containing each parameter name bound to the box containing its respective value.
+;Otherwise error.
+(define bind_parameters_in_scope 
+  (lambda (parameter_names parameter_values scope)
+    (if (eq? (length parameter_names) (length parameter_values))
+        (box (cons (list parameter_names (boxify parameter_values)) scope))
+        (error "Incorrect number of parameters in function."))))
+
 ;Takes a function, given by a name, a first line, and the rest of the function, and evaluates it in the input state.
 ;Returns to function_return, throws to throw.
 (define evaluate_function_CDT
@@ -396,38 +451,6 @@
                            (lambda (y) (error "Called continue outside of a loop"))
                            throw)
                    (evaluate_function_CDT name (first rest_of_function) (rest rest_of_function) CDT boxed_state function_return throw))))))
-
-;Takes a function of the form (name parameters) and returns the result of evaluating it.
-(define handle_function_call_CDT
-  (lambda (func boxed_state master_return break continue throw)
-    (letrec (
-             [name (first func)]
-             [parameter_values (M_value_list (rest func) boxed_state master_return break continue throw)]
-             [function_info (get_var_value_box name boxed_state)]
-             [parameter_names (first function_info)]
-             [scope (first_rest function_info)]
-             [body (first_rest_rest function_info)])
-      (if (atom? function_info)
-          (error "Attempted to reference a variable as a function.")
-          ;Main gets called with the master return, other functions get called with the call/cc return.
-          (if (eq? name 'main)
-              (evaluate_function_CDT name (first body) (rest body) CDT ;All of this junk needs to be cleaned up for the new style.
-                                     (bind_parameters_in_scope parameter_names parameter_values name function_info scope) master_return throw)
-              (call/cc
-               (lambda (return_from_function)
-                 (evaluate_function_CDT name (first body) (rest body) CDT ;all of this too
-                                        (bind_parameters_in_scope parameter_names parameter_values name function_info scope) return_from_function throw))))))))
-
-;Takes a list of parameter names, a list of parameter values, and the scope of a function.
-;If the parameter lists are the same name, put each parameter value into a box,
-;and add a new layer to the scope containing each parameter name bound to the box containing its respective value.
-;Otherwise error.
-;NOTE: Functions need to exist within their own scope so that they can recursively call themselves.
-(define bind_parameters_in_scope ;Pretty sure we won't need this anymore.
-  (lambda (parameter_names parameter_values name function_info scope)
-    (if (eq? (length parameter_names) (length parameter_values))
-        (box (cons (list (cons name parameter_names) (cons (box function_info) (boxify parameter_values))) scope))
-        (error "Incorrect number of parameters in function."))))
 
 ;-----------------------------------------------------------------------------------------------------------------------------------------
 ;Boxes and States
@@ -474,6 +497,10 @@
 ;where boolean is true and value is the var's value if the var was present and boolean is false otherwise.
 (define get_var_value_box
   (lambda (var boxed_state)
+   ; (display var)
+   ; (newline)
+    (display (unbox boxed_state))
+    (newline)
     (let ([state (unbox boxed_state)])
      (cond
       ((null? state) (error "Attempting to use a variable or function not declared in the current scope."))
@@ -484,6 +511,10 @@
 ;Gets the value of a given varable in a given layer state, or errors if no such variable exists.
 (define get_var_value
   (lambda (var state)
+  ; (display var)
+  ; (newline)
+  ; (display state)
+  ; (newline)
     (cond
       ((null? state) (begin (write var) (error "Attempting to use a variable or function not declared in the current scope.")))
       ((first (get_var_value_layer var (first state))) (first_rest (get_var_value_layer var (first state))))
@@ -568,3 +599,13 @@
 (define handle_new_class_instance
          (lambda (name CDT)
            (cons name (getForm name (unbox CDT)))))
+
+(define get_class_from_var_or_expr
+  (lambda (var_or_expr CDT boxed_state master_return break continue throw)
+    (cond
+      ((list? var_or_expr) (M_value_CDT var_or_expr CDT boxed_state master_return break continue throw))
+      (else (first_rest_rest (get_var_value_box var_or_expr boxed_state))))))
+
+(define handle_dot
+  (lambda (class field CDT boxed_state master_return break continue throw)
+    (get_var_value_box field class)))
