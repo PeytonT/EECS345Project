@@ -1,25 +1,56 @@
-class A {
-  var x = 6;
-  var y = 7;
-
-  function prod() {
-    return this.x * this.y;
-  }
-
-  function set2(a, b) {
-    x = a;
-    y = b;
+class Shape {
+  function area() {
+    return 0;
   }
 }
 
-class B extends A {
-  function set1(a) {
-    set2(a, a);
+class Rectangle extends Shape {
+  var height;
+  var width;
+
+  function setHeight(h) {
+    height = h;
   }
 
-  static function main () {
-    var b = new B();
-    b.set1(10);
-    return b.prod();
+  function setWidth(w) {
+    width = w;
+  }
+
+  function getHeight() {
+    return height;
+  }
+
+  function getWidth() {
+    return width;
+  }
+
+  function area() {
+    return getWidth() * getHeight();
+  }
+}
+
+class Square extends Rectangle {
+  function setSize(size) {
+    super.setWidth(size);
+  }
+
+  function getHeight() {
+    return super.getWidth();
+  }
+
+  function setHeight(h) {
+    super.setWidth(h);
+  }
+
+  static function main() {
+    var s = new Square();
+    var sum = 0;
+    s.setSize(10);
+    sum = sum + s.area();
+    s.setHeight(4);
+    sum = sum + s.area();
+    s.setWidth(1);
+    sum = sum + s.area();
+    return sum;
   }
 }

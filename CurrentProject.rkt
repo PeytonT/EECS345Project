@@ -291,17 +291,17 @@
 ;If the condition is false and the second expression after the condition is not null,
 ;then M_state is called on the second expression.
 (define if_CDT
-  (lambda (expr boxed_state master_return break continue throw)
+  (lambda (expr CDT boxed_state master_return break continue throw)
     (letrec ([truth (M_boolean (first expr) boxed_state master_return break continue throw)])
       (cond
-        ((eq? truth #t) (M_state (first_rest expr) CDT boxed_state master_return break continue throw))
+        ((eq? truth #t) (M_state_CDT (first_rest expr) CDT boxed_state master_return break continue throw))
         ((and (eq? truth #f) (not (eq? (rest_rest expr) '()))) (M_state_CDT (first_rest_rest expr) CDT boxed_state master_return break continue throw))))))
 
 ;Takes a condition, a loop body, a boxed state, and the M_state conditions.
 ;If the condition is true in the state, it recursively calls itself on the condition, the loop body, the continuations,
 ;and the state, after M_state has been called on the loop body.
 (define while_CDT
-  (lambda (condition loop boxed_state master_return break continue throw)
+  (lambda (condition loop CDT boxed_state master_return break continue throw)
     (letrec ([truth (M_boolean condition boxed_state master_return break continue throw)])
       (cond
         ((eq? truth #t) (begin (call/cc (lambda (k) (M_state_CDT loop CDT boxed_state master_return break k throw)))
@@ -316,9 +316,9 @@
 ;If no exception is raised, calls M_state on the finally block.
 (define handle_try_CDT
   (lambda (expr CDT boxed_state master_return break continue throw)
-    (letrec ([result (call/cc (lambda (k) (try_helper (first_rest expr) CDT boxed_state master_return break continue k)))])
+    (letrec ([result (call/cc (lambda (k) (try_helper_CDT (first_rest expr) CDT boxed_state master_return break continue k)))])
       (cond
-        ((eq? result (void)) (M_state (first (rest_rest_rest expr)) CDT boxed_state master_return break continue throw))
+        ((eq? result (void)) (M_state_CDT (first (rest_rest_rest expr)) CDT boxed_state master_return break continue throw))
         (else
          ;I have made the implementation decision that exceptions are declared as variables.
          ;Giving an exception a name that a variable already has will produce an error.
@@ -333,7 +333,7 @@
     (cond
       ((null? expr) (void))
       (else
-       (M_state (first expr) CDT boxed_state master_return break continue throw)
+       (M_state_CDT (first expr) CDT boxed_state master_return break continue throw)
        (try_helper_CDT (rest expr) CDT boxed_state master_return break continue throw)))))
 
 
@@ -354,7 +354,7 @@
     (cond
       ((null? expr) (void))
       (else
-       (M_state CDT (first expr) CDT boxed_state master_return break continue throw)
+       (M_state_CDT (first expr) CDT boxed_state master_return break continue throw)
        (catch_helper_CDT (rest expr) CDT boxed_state master_return break continue throw)))))
 
 
@@ -575,19 +575,19 @@
 ;-----------------------------------------------------------------------------------------------------------------------------------------
 
 ;Takes a block expression, a boxed state, master return, break, continue and throw, and processes said block statement in the boxed state.
-(define handle_begin
-  (lambda (expr boxed_state master_return break continue throw)
-    (begin (new_block_box boxed_state) (begin_helper expr boxed_state master_return break continue throw) (remove_top_layer boxed_state))))
+(define handle_begin_CDT
+  (lambda (expr CDT boxed_state master_return break continue throw)
+    (begin (new_block_box boxed_state) (begin_helper_CDT expr CDT boxed_state master_return break continue throw) (remove_top_layer boxed_state))))
 
 ;Helper method for handle_begin. Takes a list of expressions, a state with a new layer, master_return, break,
 ;continue and throw and processes the code block within the new layer of the boxed state.
-(define begin_helper
-  (lambda (expr boxed_state master_return break continue throw)
+(define begin_helper_CDT
+  (lambda (expr CDT boxed_state master_return break continue throw)
     (cond
       ((null? (rest expr)))
       (else
-        (M_state (first_rest expr) boxed_state master_return break continue throw)
-        (begin_helper (rest expr) boxed_state master_return break continue throw)))))
+        (M_state_CDT (first_rest expr) CDT boxed_state master_return break continue throw)
+        (begin_helper_CDT (rest expr) CDT boxed_state master_return break continue throw)))))
 
 ;-----------------------------------------------------------------------------------------------------------------------------------------
 ;Classes
@@ -601,10 +601,18 @@
 (define get_class_from_var_or_expr
   (lambda (var_or_expr CDT boxed_state master_return break continue throw)
     (cond
-      ((list? var_or_expr) (M_value_CDT var_or_expr CDT boxed_state master_return break continue throw))
-      ((eq? var_or_expr 'this) boxed_state)
+      ((list? var_or_expr) (first_rest_rest (M_value_CDT var_or_expr CDT boxed_state master_return break continue throw)))
+      ((eq? var_or_expr 'this) (get_this (unbox boxed_state)))
       ((eq? var_or_expr 'super) boxed_state)
       (else (first_rest_rest (get_var_value_box var_or_expr boxed_state))))))
+
+;Returns the lowest level of a state. Since any state's lowest level is a class state, the values stored
+;in the lowest level are the values referenced by "this."
+(define get_this
+ (lambda (unboxed_state)
+   (cond
+     ((null? (rest unboxed_state)) (box unboxed_state))
+     (else (get_this (rest unboxed_state))))))
 
 (define handle_dot
   (lambda (class field CDT boxed_state master_return break continue throw)
