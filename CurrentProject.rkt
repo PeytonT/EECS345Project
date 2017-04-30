@@ -35,7 +35,14 @@
 
 (define get_main_from_CDT
   (lambda (CDT classname)
-    (get_var_value_box 'main (first_rest (first_first_rest (unbox CDT))))))
+    (get_main_helper (unbox CDT) classname)))
+
+(define get_main_helper
+  (lambda (unboxed_CDT classname)
+    (cond
+      ((null? (first unboxed_CDT)) (error "The specified class was never declared."))
+      ((eq? classname (first_first unboxed_CDT)) (get_var_value_box 'main (first_rest (first_first_rest unboxed_CDT))))
+      (else (get_main_helper (removefirsts unboxed_CDT) classname)))))
 
 (define evaluate_main_helper
   (lambda (first_line rest_of_program CDT boxed_state master_return)
@@ -198,15 +205,16 @@
       ((eq? (first expr) '=) (begin
                                (M_state expr boxed_state master_return break continue throw)
                                (M_value (first_rest_rest expr) boxed_state master_return break continue throw)))
-      ((eq? (first expr) 'funcall) (handle_function_call (rest expr) boxed_state master_return break continue throw))
+      ((eq? (first expr) 'funcall) (handle_function_call_CDT (rest expr) CDT boxed_state master_return break continue throw))
       ((is_math_op? expr) ((get_math_op expr)
-                           (M_value (first_rest expr) boxed_state master_return break continue throw)
-                           (M_value (first_rest_rest expr) boxed_state master_return break continue throw)))
+                           (M_value_CDT (first_rest expr) CDT boxed_state master_return break continue throw)
+                           (M_value_CDT (first_rest_rest expr) CDT boxed_state master_return break continue throw)))
       ((is_bool_op? expr) (M_boolean expr boxed_state master_return break continue throw))
       ((eq? (first expr) 'new) (handle_new_class_instance (first_rest expr) CDT))
       ((eq? (first expr) 'dot) (handle_dot (get_class_from_var_or_expr (first_rest expr) CDT boxed_state master_return break continue throw)
                                            (first_rest_rest expr) CDT boxed_state master_return break continue throw))
-      (else (error "You somehow called M_value on something without a value.")))))
+      ((eq? (first expr) 'funcall) ((handle_function_call_CDT (rest expr) CDT boxed_state master_return break continue throw)))
+      (else (error "You somehow called M_value_CDT on something without a value.")))))
 
 ;Takes an expression, a state, and the continuation return and returns the boolean value of the expression evaluated in the given state.
 ;The evaluated expressions in M_boolean use boolean operations (i.e. >, <, !=, ==, >=, <=, &&, ||, !) to produce/declare/assign values.
@@ -407,7 +415,6 @@
                                           (bind_parameters_in_scope parameter_names parameter_values scope) return_from_function throw))))))
       (letrec (
                [name (first func)]
-               [warble (begin (display (rest func)) (newline) (display (unbox boxed_state)) (newline))]
                [parameter_values (M_value_list_CDT (rest func) CDT boxed_state master_return break continue throw)]
                [function_info (get_var_value_box name boxed_state)]
                [parameter_names (first function_info)]
@@ -595,6 +602,8 @@
   (lambda (var_or_expr CDT boxed_state master_return break continue throw)
     (cond
       ((list? var_or_expr) (M_value_CDT var_or_expr CDT boxed_state master_return break continue throw))
+      ((eq? var_or_expr 'this) boxed_state)
+      ((eq? var_or_expr 'super) boxed_state)
       (else (first_rest_rest (get_var_value_box var_or_expr boxed_state))))))
 
 (define handle_dot
