@@ -1,6 +1,6 @@
 ;Professor Lewicki
 ;Project Partners: Peyton Turner (dpt14), Jack La Rue (jvl13), and Jessie Adkins (jsa70) 
-;4/12/17
+;4/30/17
 ;Language used: Pretty Big
 (require racket/trace)
 (include "HelperFunctions.rkt")
@@ -60,37 +60,6 @@
                            (lambda (y) (error "Called continue outside of a loop"))
                            (lambda (z) (error "Threw an exception outside of a try block")))
                    (evaluate_main_helper (first rest_of_program) (rest rest_of_program) CDT boxed_state master_return))))))
-     
-;Takes a state in a box and returns a box which is a copy of the input box.
-(define copyState
-  (lambda (state)
-    (box (unbox state))))
-
-;The CDT is the class declaration table, it stores each of the classes defined in the file in the format ((names) (class_formats)),
-;where a class format is of the form (parent_name (box containing the associated state))
-(define createCDT
-  (lambda ()
-    (box (list (list 'Object) (list (list (void) (empty_state_box)))))))
-
-;Extracts the name of a class from the parse.
-(define getName
-  (lambda (parse)
-    (first_rest parse)))
-
-;Extracts the name of the parent of a class from the parse. If it has no parent, its parent is Object.
-(define parentsName 
-  (lambda (parse)
-    (if (eq? () (first_rest_rest parse)) 
-        'Object 
-        (first_rest (first_rest_rest parse))))) 
-
-;Unusually, getForm takes an unboxed CDT because it recursively calls itself.
-(define getForm  
-  (lambda (name unboxed_CDT)
-    (cond
-      ((null? (first unboxed_CDT)) (error "A class was extended that has not been declared."))
-      ((eq? name (first_first unboxed_CDT)) (first_first_rest unboxed_CDT))
-      (else (getForm name (removefirsts unboxed_CDT))))))
 
 (define evaluate_class 
   (lambda (first_line rest_of_program boxed_state master_return)
@@ -108,54 +77,6 @@
                            (lambda (y) (error "Called continue outside of a loop"))
                            (lambda (z) (error "Threw an exception outside of a try block")))
                    (evaluate_class (first rest_of_program) (rest rest_of_program) boxed_state master_return))))))
-
-;Contextualize takes a state and copies the state into the context of each function in the state.
-(define contextualize 
-  (lambda (boxed_state)
-    (set-box! boxed_state (list (replace_contexts boxed_state (first (unbox boxed_state)))))))
-
-(define replace_contexts 
-  (lambda (boxed_state current_state)
-    (cond
-      ((null? (first current_state)) '(()()))
-      (else (letrec ([top_L (first_first current_state)] [top_R (unbox (first_first_rest current_state))])
-              (if (and (not (atom? top_R)) (eq? (length top_R) 3))
-                  (newfirsts top_L (box (list (first top_R) boxed_state (first_rest_rest top_R))) (replace_contexts boxed_state (removefirsts current_state)))
-                  (newfirsts top_L (box top_R) (replace_contexts boxed_state (removefirsts current_state)))))))))
-
-;Extracts the state of a class from its form.
-(define state_from_form 
-  (lambda (form)
-    (copyState (first_rest form))))
-
-;Takes the name of a classes parent, the form of the classes parent, and the parse of the class and returns the form of the class.
-(define declareClass
-  (lambda (parent_name parent_form parse)
-    (letrec
-        ([body (first (rest_rest_rest parse))]
-         [state (copyState (first_rest parent_form))]
-         [temp1_does_nothing (evaluate_class (first body) (rest body) state (lambda (x) (error "Wat")))]
-         [temp2_does_nothing (contextualize state)])
-      (list parent_name state))))
-
-;Takes a CDT and a parse list and fills the CDT with the classes declared in the parse list.
-(define declareAllClasses
-  (lambda (CDT parse_list)
-    (cond
-      ((null? parse_list) ) ;we want it to return nothing, just fill the CDT 
-      (else
-       (letrec (
-                [parse (first parse_list)]
-                [name (getName parse)]
-                [parentName (parentsName parse)]
-                [parentForm (getForm parentName (unbox CDT))]
-                [class (declareClass parentName parentForm parse)])
-                (set-box! CDT (newfirsts name class (unbox CDT))) (declareAllClasses CDT (rest parse_list)))))))
-
-;Takes a parse lists and returns a CDT in which that parse list has been declared.
-(define createAndFillCDT
-  (lambda (parse_list)
-    (let ([CDT (createCDT)]) (begin (declareAllClasses CDT parse_list) CDT))))
 
 ;Takes an expression, a CDT, a state in a box, and the continuations for return, break, continue, throw, and block handling,
 ;and updates the state in the box to the state after the input expression has been evaluated.
@@ -209,18 +130,17 @@
       ((is_math_op? expr) ((get_math_op expr)
                            (M_value_CDT (first_rest expr) CDT boxed_state master_return break continue throw)
                            (M_value_CDT (first_rest_rest expr) CDT boxed_state master_return break continue throw)))
-      ((is_bool_op? expr) (M_boolean expr boxed_state master_return break continue throw))
+      ((is_bool_op? expr) (M_boolean_CDT expr CDT boxed_state master_return break continue throw))
       ((eq? (first expr) 'new) (handle_new_class_instance (first_rest expr) CDT))
-      ((eq? (first expr) 'dot) (handle_dot (get_class_from_var_or_expr (first_rest expr) CDT boxed_state master_return break continue throw)
-                                           (first_rest_rest expr) CDT boxed_state master_return break continue throw))
+      ((eq? (first expr) 'dot) (handle_dot (first_rest expr) (first_rest_rest expr) CDT boxed_state master_return break continue throw))
       ((eq? (first expr) 'funcall) ((handle_function_call_CDT (rest expr) CDT boxed_state master_return break continue throw)))
       (else (error "You somehow called M_value_CDT on something without a value.")))))
 
 ;Takes an expression, a state, and the continuation return and returns the boolean value of the expression evaluated in the given state.
 ;The evaluated expressions in M_boolean use boolean operations (i.e. >, <, !=, ==, >=, <=, &&, ||, !) to produce/declare/assign values.
 ;The expression may contain assignments
-(define M_boolean
-  (lambda (expr boxed_state master_return break continue throw)
+(define M_boolean_CDT
+  (lambda (expr CDT boxed_state master_return break continue throw)
     (cond
       ((is_boolean? expr) expr)
       ((atom? expr) (if (or (equal? expr 'true) (equal? expr 'false))
@@ -228,11 +148,11 @@
                             #t
                             #f)
                         (get_var_value_box expr boxed_state)))
-      ((and (unary? expr) (eq? (first expr) '!)) (not (M_boolean (first_rest expr) boxed_state master_return break continue throw)))
-      ((eq? (first expr) '=) (M_boolean (first_rest_rest expr) boxed_state master_return break continue throw))
-      ((is_bool_op? expr) ((get_bool_op expr) (M_value (first_rest expr) boxed_state master_return break continue throw)
-                                              (M_value (first_rest_rest expr) boxed_state master_return break continue throw)))
-      (else (error "You somehow called M_boolean on something without a boolean value.")))))
+      ((and (unary? expr) (eq? (first expr) '!)) (not (M_boolean_CDT (first_rest expr) CDT boxed_state master_return break continue throw)))
+      ((eq? (first expr) '=) (M_boolean_CDT (first_rest_rest expr) CDT boxed_state master_return break continue throw))
+      ((is_bool_op? expr) ((get_bool_op expr) (M_value_CDT (first_rest expr) CDT boxed_state master_return break continue throw)
+                                              (M_value_CDT (first_rest_rest expr) CDT boxed_state master_return break continue throw)))
+      (else (error "You somehow called M_boolean_CDT on something without a boolean value.")))))
 
 ;Takes a list of variables/values and the inputs to M_value and returns a list of M_value called on each of the elements of the input list.
 (define M_value_list_CDT
@@ -273,7 +193,10 @@
 ;of the expression if the variable is declared. Otherwise creates an error.
 (define handle_assign_CDT
   (lambda (var expr CDT boxed_state master_return break continue throw)
-    (update_box var (M_value_CDT expr CDT boxed_state master_return break continue throw) boxed_state)))
+    (if (list? var)
+        (set-box! (dot (first_rest var) (first_rest_rest var) CDT boxed_state master_return break continue throw)
+                    (M_value_CDT expr CDT boxed_state master_return break continue throw))
+        (update_box var (M_value_CDT expr CDT boxed_state master_return break continue throw) boxed_state))))
 
 ;-----------------------------------------------------------------------------------------------------------------------------------------
 ;Return, If, and While
@@ -292,7 +215,7 @@
 ;then M_state is called on the second expression.
 (define if_CDT
   (lambda (expr CDT boxed_state master_return break continue throw)
-    (letrec ([truth (M_boolean (first expr) boxed_state master_return break continue throw)])
+    (letrec ([truth (M_value_CDT (first expr) CDT boxed_state master_return break continue throw)])
       (cond
         ((eq? truth #t) (M_state_CDT (first_rest expr) CDT boxed_state master_return break continue throw))
         ((and (eq? truth #f) (not (eq? (rest_rest expr) '()))) (M_state_CDT (first_rest_rest expr) CDT boxed_state master_return break continue throw))))))
@@ -302,7 +225,7 @@
 ;and the state, after M_state has been called on the loop body.
 (define while_CDT
   (lambda (condition loop CDT boxed_state master_return break continue throw)
-    (letrec ([truth (M_boolean condition boxed_state master_return break continue throw)])
+    (letrec ([truth (M_value_CDT condition CDT boxed_state master_return break continue throw)])
       (cond
         ((eq? truth #t) (begin (call/cc (lambda (k) (M_state_CDT loop CDT boxed_state master_return break k throw)))
                                (while_CDT condition loop CDT boxed_state master_return break continue throw)))))))
@@ -495,8 +418,27 @@
       ((null? (unbox state)) (error "Tried to remove a layer from the state, but no such layer exists!"))
       (else (set-box! state (rest (unbox state)))))))
 
+;Takes a state in a box and returns a box which is a copy of the input box.
+(define copyState
+  (lambda (state)
+    (letrec ([copy (box (copyState_helper (unbox state)))]) (begin (contextualize copy) copy))))
+
+;Helper method for copyState, copies the state layer by layer using copy_layer and returns it unboxed.
+(define copyState_helper
+  (lambda (state)
+    (cond
+      ((null? state) '())
+      (else (cons (copy_layer (first state)) (copyState_helper (rest state)))))))
+
+;Takes a layer and returns a copy of it.
+(define copy_layer
+  (lambda (layer)
+    (cond
+      ((null? (first layer)) '(()()))
+      (else (newfirsts (first_first layer) (box (unbox (first_first_rest layer))) (removefirsts layer))))))
+
 ;-----------------------------------------------------------------------------------------------------------------------------------------
-;Var Value
+;Variables
 ;-----------------------------------------------------------------------------------------------------------------------------------------
 
 ;Gets the value of a variable possibly stored in a layer of a state stored in a box. Returns (boolean value),
@@ -505,6 +447,7 @@
   (lambda (var boxed_state)
     (let ([state (unbox boxed_state)])
      (cond
+      ((eq? var 'this) (get_this (unbox boxed_state)))
       ((null? state) (error "Attempting to use a variable or function not declared in the current scope."))
       ((first (get_var_value_layer var (first state))) (first_rest (get_var_value_layer var (first state))))
       (else (get_var_value var (rest state)))))))
@@ -529,6 +472,35 @@
                                          (list #t (unbox (first_first_rest layer)))
                                          (error "Attempting to use unassigned variable.")))
       (else (get_var_value_layer var (removefirsts layer))))))
+
+;Helper of handle_assign_box
+;Gets a variable name of a variable possibly stored in a layer of a state in a box and returns the box containing its value.
+(define get_var_box
+  (lambda (var boxed_state)
+    (let ([state (unbox boxed_state)])
+     (cond
+      ((null? state) (error "Attempting to use a variable or function not declared in the current scope."))
+      ((first (get_var_box_layer var (first state))) (first_rest (get_var_box_layer var (first state))))
+      (else (get_var_box_helper var (rest state)))))))
+
+;Helper of handle_assign_dot_helper
+(define get_var_box_layer
+  (lambda (var layer)
+    (cond
+      ((null? (first layer)) (list #f '()))
+      ((eq? var (first_first layer)) (if (not (null? (first_first_rest layer)))
+                                         (list #t (first_first_rest layer))
+                                         (error "Attempting to use unassigned variable.")))
+      (else (get_var_box_layer var (removefirsts layer))))))
+
+;Helper of get_var_box
+;Gets the box of a given varable in a given layer state, or errors if no such variable exists.
+(define get_var_box_helper
+  (lambda (var state)
+    (cond
+      ((null? state) (begin (write var) (error "Attempting to use a variable or function not declared in the current scope.")))
+      ((first (get_var_box_layer var (first state))) (first_rest (get_var_box_layer var (first state))))
+      (else (get_var_box_helper var (rest state))))))
 
 ;-----------------------------------------------------------------------------------------------------------------------------------------
 ;Layers
@@ -566,7 +538,7 @@
 (define update_state
   (lambda (var value state)
     (cond
-      ((null? state) (error "A variable or function is being referenced that does not exist in the current scope."))
+      ((null? state) (begin (display var) (display value) (error "A variable or function is being referenced that does not exist in the current scope.")))
       ((in_layer var (first state)) (set-box! (get_box_from_layer var (first state)) value))
       (else (update_state var value (rest state))))))
 
@@ -606,6 +578,84 @@
       ((eq? var_or_expr 'super) boxed_state)
       (else (first_rest_rest (get_var_value_box var_or_expr boxed_state))))))
 
+;The CDT is the class declaration table, it stores each of the classes defined in the file in the format ((names) (class_formats)),
+;where a class format is of the form (parent_name (box containing the associated state))
+(define createCDT
+  (lambda ()
+    (box (list (list 'Object) (list (list (void) (empty_state_box)))))))
+
+;Extracts the name of a class from the parse.
+(define getName
+  (lambda (parse)
+    (first_rest parse)))
+
+;Extracts the name of the parent of a class from the parse. If it has no parent, its parent is Object.
+(define parentsName 
+  (lambda (parse)
+    (if (eq? () (first_rest_rest parse)) 
+        'Object 
+        (first_rest (first_rest_rest parse))))) 
+
+;Unusually, getForm takes an unboxed CDT because it recursively calls itself.
+(define getForm  
+  (lambda (name unboxed_CDT)
+    (cond
+      ((null? (first unboxed_CDT)) (error "A class was extended that has not been declared."))
+      ((eq? name (first_first unboxed_CDT)) (list (first (first_first_rest unboxed_CDT)) (copyState (first_rest (first_first_rest unboxed_CDT)))))
+      (else (getForm name (removefirsts unboxed_CDT))))))
+
+;Contextualize takes a state and copies the state into the context of each function in the state.
+(define contextualize 
+  (lambda (boxed_state)
+    (set-box! boxed_state (list (replace_contexts boxed_state (first (unbox boxed_state)))))))
+
+(define replace_contexts 
+  (lambda (boxed_state current_state)
+    (cond
+      ((null? (first current_state)) '(()()))
+      (else (letrec ([top_L (first_first current_state)] [top_R (unbox (first_first_rest current_state))])
+              (if (and (not (atom? top_R)) (eq? (length top_R) 3))
+                  (newfirsts top_L (box (list (first top_R) boxed_state (first_rest_rest top_R))) (replace_contexts boxed_state (removefirsts current_state)))
+                  (newfirsts top_L (box top_R) (replace_contexts boxed_state (removefirsts current_state)))))))))
+
+;Extracts the state of a class from its form.
+(define state_from_form 
+  (lambda (form)
+    (copyState (first_rest form))))
+
+;Takes the name of a classes parent, the form of the classes parent, and the parse of the class and returns the form of the class.
+(define declareClass
+  (lambda (parent_name parent_form parse)
+    (letrec
+        ([body (first (rest_rest_rest parse))]
+         [state (copyState (first_rest parent_form))]
+         [temp1_does_nothing (evaluate_class (first body) (rest body) state (lambda (x) (error "Wat")))]
+         [temp2_does_nothing (contextualize state)])
+      (list parent_name state))))
+
+;Takes a CDT and a parse list and fills the CDT with the classes declared in the parse list.
+(define declareAllClasses
+  (lambda (CDT parse_list)
+    (cond
+      ((null? parse_list) ) ;we want it to return nothing, just fill the CDT 
+      (else
+       (letrec (
+                [parse (first parse_list)]
+                [name (getName parse)]
+                [parentName (parentsName parse)]
+                [parentForm (getForm parentName (unbox CDT))]
+                [class (declareClass parentName parentForm parse)])
+                (set-box! CDT (newfirsts name class (unbox CDT))) (declareAllClasses CDT (rest parse_list)))))))
+
+;Takes a parse lists and returns a CDT in which that parse list has been declared.
+(define createAndFillCDT
+  (lambda (parse_list)
+    (let ([CDT (createCDT)]) (begin (declareAllClasses CDT parse_list) CDT))))
+
+;-----------------------------------------------------------------------------------------------------------------------------------------
+;Dot
+;-----------------------------------------------------------------------------------------------------------------------------------------
+
 ;Returns the lowest level of a state. Since any state's lowest level is a class state, the values stored
 ;in the lowest level are the values referenced by "this."
 (define get_this
@@ -615,5 +665,9 @@
      (else (get_this (rest unboxed_state))))))
 
 (define handle_dot
-  (lambda (class field CDT boxed_state master_return break continue throw)
-    (get_var_value_box field class)))
+  (lambda (class_expr field CDT boxed_state master_return break continue throw)
+    (unbox (dot class_expr field CDT boxed_state master_return break continue throw))))
+
+(define dot
+  (lambda (class_expr field CDT boxed_state master_return break continue throw)
+    (get_var_box field (get_class_from_var_or_expr class_expr CDT boxed_state master_return break continue throw))))

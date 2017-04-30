@@ -1,56 +1,29 @@
-class Shape {
-  function area() {
-    return 0;
-  }
-}
+class List {
+  var val;
+  var next;
 
-class Rectangle extends Shape {
-  var height;
-  var width;
-
-  function setHeight(h) {
-    height = h;
+  function getNext() {
+    return next;
   }
 
-  function setWidth(w) {
-    width = w;
+  function setNext(x) {
+    if (x == 0)
+      next = 0;
+    else {
+      next = new List();
+      next.setVal(val+1);
+      next.setNext(x-1);
+    }
   }
 
-  function getHeight() {
-    return height;
-  }
-
-  function getWidth() {
-    return width;
-  }
-
-  function area() {
-    return getWidth() * getHeight();
-  }
-}
-
-class Square extends Rectangle {
-  function setSize(size) {
-    super.setWidth(size);
-  }
-
-  function getHeight() {
-    return super.getWidth();
-  }
-
-  function setHeight(h) {
-    super.setWidth(h);
+  function setVal(x) {
+    val = x;
   }
 
   static function main() {
-    var s = new Square();
-    var sum = 0;
-    s.setSize(10);
-    sum = sum + s.area();
-    s.setHeight(4);
-    sum = sum + s.area();
-    s.setWidth(1);
-    sum = sum + s.area();
-    return sum;
+    var l = new List();
+    l.setVal(10);
+    l.setNext(5);
+    return l.getNext().getNext().getNext().getNext().getNext().val;
   }
 }
