@@ -264,8 +264,8 @@
 ;updates the boxed state to the state where the variable is assigned to the value
 ;of the expression if the variable is declared. Otherwise creates an error.
 (define handle_assign_CDT
-  (lambda (var expr boxed_state master_return break continue throw)
-    (update_box var (M_value_CDT expr boxed_state master_return break continue throw) boxed_state)))
+  (lambda (var expr CDT boxed_state master_return break continue throw)
+    (update_box var (M_value_CDT expr CDT boxed_state master_return break continue throw) boxed_state)))
 
 ;-----------------------------------------------------------------------------------------------------------------------------------------
 ;Return, If, and While
@@ -386,13 +386,11 @@
 ;Takes a function of the form (name/expr parameters) and returns the result of evaluating it.
 (define handle_function_call_CDT
   (lambda (func CDT boxed_state master_return break continue throw)
-    (display func)
-    (newline)
     (if
      (list? (first func))
       (letrec (
                [name 'not_main]
-               [parameter_values (M_value_list (rest func) boxed_state master_return break continue throw)]
+               [parameter_values (M_value_list_CDT (rest func) CDT boxed_state master_return break continue throw)]
                [function_info (M_value_CDT (first func) CDT boxed_state master_return break continue throw)]
                [parameter_names (first function_info)]
                [scope (first_rest function_info)]
@@ -409,7 +407,8 @@
                                           (bind_parameters_in_scope parameter_names parameter_values scope) return_from_function throw))))))
       (letrec (
                [name (first func)]
-               [parameter_values (M_value_list (rest func) boxed_state master_return break continue throw)]
+               [warble (begin (display (rest func)) (newline) (display (unbox boxed_state)) (newline))]
+               [parameter_values (M_value_list_CDT (rest func) CDT boxed_state master_return break continue throw)]
                [function_info (get_var_value_box name boxed_state)]
                [parameter_names (first function_info)]
                [scope (first_rest function_info)]
@@ -432,7 +431,7 @@
 (define bind_parameters_in_scope 
   (lambda (parameter_names parameter_values scope)
     (if (eq? (length parameter_names) (length parameter_values))
-        (set-box! scope (cons (list (list parameter_names) (boxify parameter_values)) (unbox scope)))
+        (box (cons (list parameter_names (boxify parameter_values)) (unbox scope)))
         (error "Incorrect number of parameters in function."))))
 
 ;Takes a function, given by a name, a first line, and the rest of the function, and evaluates it in the input state.
@@ -497,10 +496,6 @@
 ;where boolean is true and value is the var's value if the var was present and boolean is false otherwise.
 (define get_var_value_box
   (lambda (var boxed_state)
-   ; (display var)
-   ; (newline)
-    (display (unbox boxed_state))
-    (newline)
     (let ([state (unbox boxed_state)])
      (cond
       ((null? state) (error "Attempting to use a variable or function not declared in the current scope."))
@@ -511,10 +506,6 @@
 ;Gets the value of a given varable in a given layer state, or errors if no such variable exists.
 (define get_var_value
   (lambda (var state)
-  ; (display var)
-  ; (newline)
-  ; (display state)
-  ; (newline)
     (cond
       ((null? state) (begin (write var) (error "Attempting to use a variable or function not declared in the current scope.")))
       ((first (get_var_value_layer var (first state))) (first_rest (get_var_value_layer var (first state))))
