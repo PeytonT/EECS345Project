@@ -50,6 +50,8 @@
       ((eq? classname (first_first unboxed_CDT)) (get_var_value_box 'main (first_rest (first_first_rest unboxed_CDT))))
       (else (get_main_helper (removefirsts unboxed_CDT) classname)))))
 
+;Helps evaluate the main function. Passes the body of the main function into M_state for evaluation and storing of its expressions,
+;variables and values. 
 (define evaluate_main_helper
   (lambda (first_line rest_of_program CDT boxed_state master_return)
     (cond
@@ -67,6 +69,8 @@
                            (lambda (z) (error "Threw an exception outside of a try block")))
                    (evaluate_main_helper (first rest_of_program) (rest rest_of_program) CDT boxed_state master_return))))))
 
+;Helps evaluate a particular class. Passes the class and its body into M_state for evaluation and storing of its expressions,
+;variables and values.
 (define evaluate_class 
   (lambda (first_line rest_of_program boxed_state master_return)
     (cond
@@ -616,6 +620,7 @@
   (lambda (boxed_state)
     (set-box! boxed_state (list (replace_contexts boxed_state (first (unbox boxed_state)))))))
 
+;replace_contexts takes two states and replaces the context of each function in the first state with the context of each function in the second state.
 (define replace_contexts 
   (lambda (boxed_state current_state)
     (cond
@@ -671,10 +676,15 @@
      ((null? (rest unboxed_state)) (box unboxed_state))
      (else (get_this (rest unboxed_state))))))
 
+;Handles dot expressions. Dot expressions call and return the values of either stored variables or functions with given parameters within the class.
+;This function passes information to the dot function to calculate the value of the dot expression. 
 (define handle_dot
   (lambda (class_expr field CDT boxed_state master_return break continue throw)
     (unbox (dot class_expr field CDT boxed_state master_return break continue throw))))
 
+;This function calculates the value of a dot expression given a particular class expression.
+;It takes a class expression (i.e. the expression to the left of the dot) and finds the value of the
+;function or variable (i.e. the expression to the right of the dot) that is stored within said class expression. 
 (define dot
   (lambda (class_expr field CDT boxed_state master_return break continue throw)
     (get_var_box field (get_class_from_var_or_expr class_expr CDT boxed_state master_return break continue throw))))
