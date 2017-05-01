@@ -25,6 +25,8 @@
         ((eq? output #f) 'false)
         (else output)))))
 
+;Evaluates the body of the main function of a class. Returns the value of said function.
+;Utilizes get_main_from_CDT and evaluate_main_helper functions to perform this evaluation.
 (define evaluate_main
   (lambda (CDT classname master_return)
     (letrec ([main (get_main_from_CDT CDT classname)] [boxed_state (first_rest main)] [body (first_rest_rest main)])
@@ -33,10 +35,14 @@
         ((null? (rest body)) (evaluate_main_helper (first body) () CDT boxed_state master_return))
         (else (evaluate_main_helper (first body) (rest body) CDT boxed_state master_return))))))
 
+;Takes a CDT and a classname and passes the unboxed CDT and said classname to get_main_helper. get_main_helper then
+;returns the main function of the particular class, if it exists. 
 (define get_main_from_CDT
   (lambda (CDT classname)
     (get_main_helper (unbox CDT) classname)))
 
+;Takes an unboxed CDT and classname and, if the class has been declared, it returns the main function for said class.
+;If the class has not been declared, then an error is thrown.
 (define get_main_helper
   (lambda (unboxed_CDT classname)
     (cond
@@ -570,6 +576,7 @@
          (lambda (name CDT)
            (cons name (getForm name (unbox CDT)))))
 
+;Derives the class of a particular variable or expression.
 (define get_class_from_var_or_expr
   (lambda (var_or_expr CDT boxed_state master_return break continue throw)
     (cond
